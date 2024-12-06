@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login de Empresa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f3f3f3;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        h2 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Login de Empresa</h2>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email Corporativo" required />
+            <input type="password" id="senha" placeholder="Senha" required />
+            <p class="error" id="errorMessage"></p>
+            <button type="button" onclick="login()">Entrar</button>
+        </form>
+    </div>
+
+    <script>
+        const BASE_URL = "http://127.0.0.1:8080/api/empresas";
+
+        async function login() {
+            const email = document.getElementById("email").value.trim();
+            const senha = document.getElementById("senha").value.trim();
+            const errorMessage = document.getElementById("errorMessage");
+
+            try {
+                const response = await fetch(`${BASE_URL}/login?email=${encodeURIComponent(email)}&senha=${encodeURIComponent(senha)}`, {
+                    method: "POST"
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const result = await response.json();
+
+                // Armazena o ID da empresa no localStorage
+                localStorage.setItem("empresaId", result.idEmpresa);
+
+                // Redirecionar para a página inicial da empresa
+                window.location.href = "empresa-bem-vindo.html";
+            } catch (error) {
+                errorMessage.textContent = error.message || "Erro ao fazer login. Tente novamente.";
+            }
+        }
+    </script>
+</body>
+</html>

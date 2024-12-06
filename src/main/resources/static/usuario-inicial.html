@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Inicial - Usuário</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f3f3f3;
+        }
+        .container {
+            margin: 20px auto;
+            max-width: 800px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Empresas Disponíveis</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Logo</th>
+                    <th>Nome da Empresa</th>
+                    <th>Modalidade</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="empresaTabela">
+                <!-- Empresas serão carregadas aqui -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const BASE_URL = "http://127.0.0.1:8080/api/empresas";
+
+        async function carregarEmpresas() {
+            const tabela = document.getElementById("empresaTabela");
+
+            try {
+                const response = await fetch(`${BASE_URL}/listar`);
+                if (!response.ok) throw new Error(await response.text());
+
+                const empresas = await response.json();
+
+                tabela.innerHTML = empresas.map(empresa => `
+                    <tr>
+                        <td><img src="${empresa.logoUrl || 'https://via.placeholder.com/50'}" alt="Logo" width="50"></td>
+                        <td>${empresa.nomeCorporativo}</td>
+                        <td>${empresa.modalidade || 'Indisponível'}</td>
+                        <td><button onclick="solicitarServico(${empresa.idEmpresa})">Solicitar Serviço</button></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                tabela.innerHTML = `<tr><td colspan="4">Erro ao carregar empresas: ${error.message}</td></tr>`;
+            }
+        }
+
+        function solicitarServico(idEmpresa) {
+            alert(`Serviço solicitado para a empresa ID: ${idEmpresa}`);
+            // Função futura para enviar solicitação de serviço
+        }
+
+        // Carregar empresas ao abrir a página
+        window.onload = carregarEmpresas;
+    </script>
+</body>
+</html>
