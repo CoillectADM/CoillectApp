@@ -1,33 +1,32 @@
 # --- Build stage ---
 FROM node:24-alpine AS builder
 
-# Create app directory
 WORKDIR /usr/src/app
 
-# Install all dependencies (including dev for compilation)
-COPY package*.json .
+# Copy dependency files and install only prod deps
+COPY package*.json ./
 RUN npm ci
 
-# Copy source code
+# Copy source and build
 COPY . .
-
-# Build the NestJS project
-RUN npm run build
-
-# Remove dev dependencies to slim down
-RUN npm prune --omit=dev
+RUN npm run build && npm prune --omit=dev
 
 # --- Production stage ---
 FROM node:24-alpine
 
 WORKDIR /usr/src/app
 
-# Copy production node_modules and compiled sources
-COPY --from=builder /usr/src/app/node_modules ./node_modules
+# Copy wait-for-it script and make it executable
+COPY wait-for-it.sh ./wait-for-it.sh
+RUN chmod +x ./wait-for-it.sh
+
+# Copy build output and dependencies
 COPY --from=builder /usr/src/app/dist ./dist
+COPY --from=builder /usr/src/app/node_modules ./node_modules
 COPY package*.json ./
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+# Wait for the PostgreSQL service before starting backend
+ENTRYPOINT ["./wait-for-it.sh", "db:5432", "--", "node", "dist/main.js"]
