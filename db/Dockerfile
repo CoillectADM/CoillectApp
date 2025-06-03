@@ -1,4 +1,4 @@
-FROM postgres:17.6-alpine
+FROM postgres:17.5-alpine
 
 # Install security updates and clean up
 RUN apk update && apk upgrade --no-cache

@@ -18,7 +18,7 @@ FROM nginx:1.27-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Custom Nginx conf for SPA
-COPY server.conf /etc/nginx/conf.d/default.conf
+COPY server.nginx /etc/nginx/conf.d/default.conf
 
 # Add wait-for-it script to wait for backend
 COPY wait-for-it.sh /wait-for-it.sh
