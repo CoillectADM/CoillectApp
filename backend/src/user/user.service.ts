@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto/create-user.dto';
 
 @Injectable()
 export class UserService {
-  async findOneById() {}
+  async findOneById(id: number) {}
 
-  async findOneByEmail() {}
+  async findOneByEmail(email: string) {}
 
-  async updateUser() {}
+  async updateUser(id: number, user: Partial<CreateUserDto>) {}
 
-  async createUser() {}
-  async deleteUser() {}
+  async createUser(user: CreateUserDto) {}
+  async deleteUser(id: number) {}
 }
