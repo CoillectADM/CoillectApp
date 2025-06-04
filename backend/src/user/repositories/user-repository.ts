@@ -1,1 +1,33 @@
-export class UserRepository {}
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from '../entities/user/user';
+import { Repository } from 'typeorm';
+
+@Injectable()
+export class UserRepository {
+  constructor(
+    @InjectRepository(User) private readonly repo: Repository<User>,
+  ) {}
+
+  async createUser(data: Partial<User>): Promise<User> {
+    const user = this.repo.create(data);
+    return this.repo.save(user);
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return this.repo.findOne({ where: { email } });
+  }
+
+  async updateUser(id: number, data: Partial<User>): Promise<User> {
+    await this.repo.update(id, data);
+
+    return this.repo.findOneOrFail({ where: { id } });
+  }
+
+  async deleteUser(id: number): Promise<User> {
+    const userToDelete = await this.repo.findOne({ where: { id } });
+
+    this.repo.delete(id);
+    return userToDelete;
+  }
+}
