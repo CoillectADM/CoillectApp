@@ -2,14 +2,10 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
     TypeOrmModule.forRoot({
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
@@ -18,6 +14,7 @@ import { UserModule } from './user/user.module';
       host: process.env.DATABASE_HOST,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
+      type: 'postgres',
     }),
     UserModule,
   ],
