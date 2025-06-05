@@ -10,14 +10,13 @@ import {
 import { CreateUserDto } from './dto/create-user.dto/create-user.dto';
 import { UserService } from './user.service';
 import { APIResponse } from 'src/utils/response/response';
-import { User } from './entities/user/user.entity';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
   @Get(':id')
   async findOneById(@Param('id') id: number): Promise<APIResponse> {
-    const response: User = await this.userService.findOneById(id);
+    const response = await this.userService.findOneById(id);
     return new APIResponse()
       .setData(response)
       .setError(false)
