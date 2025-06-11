@@ -31,6 +31,9 @@ export class Company {
   @Column({ nullable: true })
   description: string;
 
+  @Column({ default: 'company' })
+  role: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

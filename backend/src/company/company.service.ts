@@ -17,24 +17,29 @@ export class CompanyService {
     private readonly repRepo: CompanyRepresentativeRepository,
   ) {}
 
-  async createCompany(
-    companyData: CreateCompanyDto,
-    addressData: CreateCompanyAddressDto,
-    contactData: CreateCompanyContactDto,
-    representativeData: CreateCompanyRepresentativeDto,
-  ) {
-    const company = await this.companyRepo.createCompany(companyData);
-    const address = await this.addressRepo.createAddress({ ...addressData, company });
-    const contact = await this.contactRepo.createContact({ ...contactData, company });
-    const representative = await this.repRepo.createRepresentative({ ...representativeData, company });
+    async createCompany(
+      companyData: CreateCompanyDto,
+      addressData: CreateCompanyAddressDto,
+      contactData: CreateCompanyContactDto,
+      representativeData: CreateCompanyRepresentativeDto,
+    ) {
+      const company = await this.companyRepo.createCompany({
+        ...companyData,
+        role: 'company', // força a role manualmente
+      });
 
-    return {
-      company,
-      address,
-      contact,
-      representative,
-    };
-  }
+      const address = await this.addressRepo.createAddress({ ...addressData, company });
+      const contact = await this.contactRepo.createContact({ ...contactData, company });
+      const representative = await this.repRepo.createRepresentative({ ...representativeData, company });
+
+      return {
+        company,
+        address,
+        contact,
+        representative,
+      };
+    }
+
 
   async getAllCompanies() {
     return this.companyRepo.findAll();
