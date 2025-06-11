@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // Adicionando o import correto
+import { useState } from 'react'; // Adicionando o import correto
 import { useNavigate } from 'react-router-dom';
 import './dashboard.css';  // Importando o CSS correto
 import './mapaimg.jpg';

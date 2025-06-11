@@ -40,7 +40,7 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_NAME: app_db
     ports:
-      - "3201:3000"
+      - "3000:3000"
     networks:
       - appnet
 
@@ -52,7 +52,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "81:80"
+      - "8080:80"
     networks:
       - appnet
 
