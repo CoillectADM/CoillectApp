@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitação de Serviço</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+            background: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        .empresa {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ccc;
+        }
+        .empresa:last-child {
+            border-bottom: none;
+        }
+        .btn {
+            padding: 5px 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #218838;
+        }
+        .btn-secondary {
+            background-color: #007bff;
+        }
+        .btn-secondary:hover {
+            background-color: #0056b3;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Empresas Disponíveis</h1>
+        <div style="margin-bottom: 20px;">
+            <button class="btn btn-secondary" onclick="window.location.href='alterarSenha.html'">
+                Alterar Senha
+            </button>
+            <button class="btn btn-danger" onclick="window.location.href='deletarConta.html'">
+                Deletar Conta
+            </button>
+        </div>
+        <div id="empresas"></div>
+    </div>
+
+    <script>
+        const BASE_URL = "http://localhost:8080/api";
+
+        async function listarEmpresas() {
+            try {
+                const response = await fetch(`${BASE_URL}/empresas/listar`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Erro ao buscar empresas.");
+                }
+
+                const empresas = await response.json();
+                const container = document.getElementById("empresas");
+
+                empresas.forEach(empresa => {
+                    const div = document.createElement("div");
+                    div.className = "empresa";
+
+                    div.innerHTML = `
+                        <span>${empresa.nomeCorporativo}</span>
+                        <button class="btn" onclick="solicitarServico('${empresa.cnpj}', ${empresa.idServico})">
+                            Solicitar Serviço
+                        </button>
+                    `;
+
+                    container.appendChild(div);
+                });
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao carregar empresas.");
+            }
+        }
+
+        async function solicitarServico(cnpjEmpresa, idServico) {
+            try {
+                const cpfUsuario = localStorage.getItem("cpf");
+                if (!cpfUsuario) {
+                    alert("Usuário não autenticado corretamente.");
+                    return;
+                }
+
+                const response = await fetch(`${BASE_URL}/servicos/solicitar`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("authToken")}`
+                    },
+                    body: JSON.stringify({ cpfUsuario, cnpjEmpresa, idServico })
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                alert("Serviço solicitado com sucesso!");
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao solicitar serviço: " + error.message);
+            }
+        }
+
+        // Carrega as empresas ao iniciar a página
+        listarEmpresas();
+    </script>
+</body>
+</html>

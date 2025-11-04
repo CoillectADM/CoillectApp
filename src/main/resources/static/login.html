@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Usuário Coillect</title>
+    <script>
+        // Função para validar o formulário
+        function validarFormulario() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+
+            if (!email || !senha) {
+                alert('Por favor, preencha todos os campos.');
+                return false;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Por favor, insira um email válido.');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Função para realizar o login
+        async function realizarLogin(event) {
+            event.preventDefault();
+
+            if (!validarFormulario()) {
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+
+            try {
+                const response = await fetch('http://localhost:8080/api/usuarios/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const token = result.token;
+                    const usuarioId = result.usuarioId;
+
+                    // Armazena o token e ID do usuário no localStorage
+                    localStorage.setItem('authToken', token);
+                    localStorage.setItem('usuarioId', usuarioId);
+
+                    // Redireciona para a página de solicitação de serviços
+                    window.location.href = "solicitar-servico.html";
+                } else {
+                    const errorMessage = await response.text();
+                    alert(`Erro: ${errorMessage}`);
+                }
+            } catch (error) {
+                alert("Erro ao tentar realizar login. Por favor, tente novamente.");
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Login - Usuário Coillect</h1>
+    <form onsubmit="realizarLogin(event)">
+        <label for="email">E-mail:</label>
+        <input type="email" id="email" name="email" required>
+        <br><br>
+        <label for="senha">Senha:</label>
+        <input type="password" id="senha" name="senha" required>
+        <br><br>
+        <button type="submit">Entrar</button>
+    </form>
+</body>
+</html>

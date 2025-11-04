@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deletar Conta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            width: 40%;
+            margin: 50px auto;
+            padding: 20px;
+            background: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .btn {
+            padding: 10px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #c82333;
+        }
+        .alert {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Deletar Conta</h1>
+        <form id="deletarContaForm">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+            
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" required>
+            
+            <label for="confirmarSenha">Confirmar Senha</label>
+            <input type="password" id="confirmarSenha" name="confirmarSenha" required>
+            
+            <button type="submit" class="btn">Deletar Conta</button>
+        </form>
+        <div id="alerta" class="alert"></div>
+    </div>
+
+    <script>
+        const BASE_URL = "http://localhost:8080/api";
+
+        document.getElementById("deletarContaForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const senha = document.getElementById("senha").value;
+            const confirmarSenha = document.getElementById("confirmarSenha").value;
+
+            if (senha !== confirmarSenha) {
+                document.getElementById("alerta").textContent = "As senhas não coincidem.";
+                return;
+            }
+
+            const confirmar = confirm("Tem certeza que deseja excluir sua conta?");
+            if (!confirmar) return;
+
+            try {
+                const response = await fetch(`${BASE_URL}/usuarios/deletar`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, senha })
+                });
+
+                if (response.ok) {
+                    alert("Conta excluída com sucesso!");
+                    window.location.href = "index.html"; // Redirecionar para a página de cadastro
+                } else {
+                    const message = await response.text();
+                    document.getElementById("alerta").textContent = message;
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById("alerta").textContent = "Erro ao excluir conta.";
+            }
+        });
+    </script>
+</body>
+</html>
