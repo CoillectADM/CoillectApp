@@ -30,5 +30,6 @@ import { CompanyRepresentativeRepository } from './repository/company-representa
     CompanyContactRepository,
     CompanyRepresentativeRepository,
   ],
+  exports: [CompanyService], // 👈 ADICIONE ESTA LINHA
 })
 export class CompanyModule {}

@@ -140,4 +140,10 @@ export class CompanyService {
   async findByCnpj(cnpj: string) {
     return this.companyRepo.findByCnpj(cnpj);
   }
+
+  async findByEmail(email: string) {
+    return this.companyRepo.findByEmail(email);
+  }
+
+
 }

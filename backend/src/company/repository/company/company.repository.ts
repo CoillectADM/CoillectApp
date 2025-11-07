@@ -20,10 +20,6 @@ export class CompanyRepository {
     return this.companyRepo.findOne({ where: { cnpj } });
   }
 
-  async findByEmail(email: string): Promise<Company | null> {
-    return this.companyRepo.findOne({ where: { email } });
-  }
-
   async findById(id: number): Promise<Company | null> {
     return this.companyRepo.findOne({
       where: { id },
@@ -41,4 +37,15 @@ export class CompanyRepository {
   async save(company: Company): Promise<Company> {
     return this.companyRepo.save(company);
   }
+
+  async findOne(params: Partial<Company>): Promise<Company | null> {
+    return this.companyRepo.findOne({ where: params });
+  }
+
+  async findByEmail(email: string): Promise<Company | null> {
+    return this.companyRepo.findOne({
+    where: { email },
+    });
+  }
+
 }

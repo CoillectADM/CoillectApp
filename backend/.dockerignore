@@ -1,0 +1,25 @@
+# Ignora dependências locais
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ignora pastas de build antigas
+dist
+coverage
+
+# Ignora configurações e caches locais
+.env
+.DS_Store
+.idea
+.vscode
+*.local
+
+# Ignora arquivos de testes
+test
+*.spec.ts
+
+# NÃO IGNORAR estes (importante!)
+# src/
+# tsconfig.json
+# tsconfig.build.json
