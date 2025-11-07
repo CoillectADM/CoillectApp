@@ -28,11 +28,13 @@ export class Company {
   @Column({ unique: true })
   cnpj: string;
 
-  @Column({ nullable: true })
-  description: string;
-
   @Column({ default: 'company' })
   role: string;
+
+  // 👇 Nova coluna adicionada para rastrear o progresso do cadastro
+  @Column({ type: 'varchar', length: 12, default: 'STEP_1' })
+registrationStage: 'STEP_1' | 'STEP_2' | 'STEP_3' | 'STEP_4' | 'COMPLETED';
+
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -34,10 +34,4 @@ export class CreateCompanyDto {
   @IsString()
   cnpj: string;
 
-  @ApiProperty({
-    description: 'Breve descrição sobre a empresa e suas atividades',
-    example: 'Empresa especializada na coleta e reciclagem de óleo vegetal usado.',
-  })
-  @IsString()
-  description?: string;
 }
