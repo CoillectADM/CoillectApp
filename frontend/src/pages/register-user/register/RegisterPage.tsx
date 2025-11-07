@@ -3,7 +3,7 @@ import Step1 from './step1';
 import Step2 from './Step2';
 import Step3 from './step3';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../../api/axios';
 import React from 'react';
 
 // Tipagem do formData
@@ -60,7 +60,7 @@ export default function RegisterPage() {
 
         const formattedDate = formatDate(formData.data_nascimento);
 
-        const userRes = await axios.post('http://localhost:3201/api/user', {
+        const userRes = await api.post('/user', {
           name: formData.name,
           email: formData.email,
           password: formData.password,
@@ -74,7 +74,7 @@ export default function RegisterPage() {
       } else if (step === 2) {
         if (!validateStep2()) return;
 
-        await axios.post(`http://localhost:3201/api/user/address/${userId}`, {
+        await api.post(`/user/address/${userId}`, {
           rua: formData.rua,
           cep: formData.cep,
           cidade: formData.cidade,
@@ -132,7 +132,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`http://localhost:3201/api/user/phone_number/${userId}`, {
+      await api.post(`/user/phone_number/${userId}`, {
         telefone: formData.telefone,
       });
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../../api/axios';
 import './login.css';
 
 export default function LoginPage() {
@@ -11,7 +11,7 @@ export default function LoginPage() {
 const handleLogin = async (e: React.FormEvent) => { 
   e.preventDefault();
   try {
-    const response = await axios.post('http://localhost:3201/api/api/auth/login', {
+    const response = await api.post('/auth/login', {
       email,
       password,
     });
