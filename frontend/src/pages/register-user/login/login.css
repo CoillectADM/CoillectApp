@@ -1,0 +1,108 @@
+/* Base geral */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1E1E1E;
+  color: #FFFFFF;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Container do formulário de login */
+.login-container {
+  width: 100%;
+  max-width: 400px; /* Garantindo que o formulário não ocupe muito espaço em telas grandes */
+  justify-content: center;
+  padding: 24px;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+/* Título */
+h2 {
+  color: #8CA64E;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+/* Labels */
+label {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: #FFFFFF;
+}
+
+/* Inputs */
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #8CA64E;
+  border-radius: 8px;
+  background-color: #3A3A3A;
+  color: #FFFFFF;
+  font-size: 1em;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+input:focus {
+  border-color: #A0D268;
+  outline: none;
+}
+
+/* Erros */
+span {
+  color: red;
+  font-size: 0.85em;
+  margin-top: -8px;
+  margin-bottom: 10px;
+  display: block;
+}
+
+/* Botão */
+button {
+  width: 100%;
+  padding: 12px;
+  background-color: #8CA64E;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 1.1em;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #7B9442;
+}
+
+button:disabled {
+  background-color: #5c6541;
+  cursor: not-allowed;
+}
+
+/* Responsividade */
+@media (max-width: 380px) {
+  .login-container {
+    padding: 16px;
+  }
+
+  input {
+    font-size: 0.95em;
+    padding: 10px;
+  }
+
+  button {
+    font-size: 1em;
+    padding: 10px;
+  }
+}
