@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-
 import { UserService } from '../user/user.service';
 import { CompanyService } from '../company/company.service';
 
@@ -17,7 +16,7 @@ export class AuthService {
   // LOGIN DE USUÁRIO
   // -----------------------------
   async validateUser(email: string, password: string) {
-    const { user } = await this.userService.findOneByEmail(email);
+    const user = await this.userService.findOneByEmail(email); // <-- importante: sem { user }
 
     if (!user) {
       throw new UnauthorizedException('Email ou senha inválidos');

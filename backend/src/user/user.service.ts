@@ -12,6 +12,7 @@ import { UpdateUserAddressDto } from './dto/update-user-address.dto/update-user-
 import { CreateUserPhoneNumberDto } from './dto/create-user-phone-number.dto/create-user-phone-number.dto';
 import { UserPhoneNumber } from './entities/user_phone_number/user_phone_number';
 import { UpdateUserPhoneNumberDto } from './dto/update-user-phone-number.dto/update-user-phone-number.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -26,11 +27,11 @@ export class UserService {
     };
   }
 
-  async findOneByEmail(email: string): Promise<{ user: User }> {
-    return {
-      user: await this.userRepository.findOneByEmail(email),
-    };
+  async findOneByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOneByEmail(email);
   }
+
+
 
   async updateUser(
     id: number,
@@ -59,9 +60,17 @@ export class UserService {
   }
 
   async createUser(user: CreateUserDto): Promise<User> {
-    return this.userRepository.createUser(
-      process_data_nasc(user, user.data_nascimento),
-    );
+    // 1️⃣ Criptografa a senha antes de salvar
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+
+    // 2️⃣ Aplica a transformação de data (mantendo sua lógica original)
+    const processedUser = process_data_nasc(user, user.data_nascimento);
+
+    // 3️⃣ Substitui a senha em texto puro pelo hash
+    processedUser.password = hashedPassword;
+
+    // 4️⃣ Salva no repositório
+    return this.userRepository.createUser(processedUser);
   }
   async deleteUser(id: number): Promise<{ deletedUser: User }> {
     return {

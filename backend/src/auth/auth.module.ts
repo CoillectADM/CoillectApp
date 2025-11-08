@@ -14,7 +14,7 @@ import { CompanyJwtStrategy } from './strategies/company-jwt.strategy';
     CompanyModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'coillect_super_secret_key',
+      secret: process.env.JWT_SECRET || 'supersegredo123',
       signOptions: { expiresIn: '1d' }, // expira em 24h
     }),
   ],

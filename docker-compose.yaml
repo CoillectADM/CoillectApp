@@ -39,10 +39,13 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
       DATABASE_NAME: app_db
+      JWT_SECRET: supersegredo123
     ports:
       - "3000:3000"
     networks:
       - appnet
+    #volumes:
+    #  - ./backend:/usr/src/app
 
   frontend:
     build:
@@ -55,6 +58,8 @@ services:
       - "8080:80"
     networks:
       - appnet
+    #volumes:
+    #  - ./frontend:/app
 
 volumes:
   db-data:
