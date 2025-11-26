@@ -22,6 +22,68 @@ export class CompanyService {
     private readonly repRepo: CompanyRepresentativeRepository,
   ) {}
 
+  // NOVO MÉTODO: Cadastro Completo
+  async registerFullCompany(form: {
+    company: CreateCompanyDto,
+    address: CreateCompanyAddressDto,
+    contact: CreateCompanyContactDto,
+    representative: CreateCompanyRepresentativeDto
+  }) {
+    // Checagem de unicidade antes de iniciar
+    const { available, conflicts } = await this.checkAvailability(
+      form.company.email,
+      form.company.cnpj,
+    );
+
+    if (!available) {
+      throw new ConflictException(
+        `Já existe empresa com: ${conflicts.join(' e ')}`
+      );
+    }
+
+    // Criptografa senha
+    const hashedPassword = await bcrypt.hash(form.company.password, 10);
+
+    // Criação da empresa
+    const company = await this.companyRepo.createCompany({
+      ...form.company,
+      password: hashedPassword,
+      role: 'company',
+      registrationStage: 'STEP_1',
+    });
+
+    // Endereço
+    await this.addressRepo.createAddress({
+      ...form.address,
+      company,
+    });
+
+    // Contato
+    await this.contactRepo.createContact({
+      ...form.contact,
+      company,
+    });
+
+    // Representante
+    await this.repRepo.createRepresentative({
+      ...form.representative,
+      company,
+    });
+
+    // Atualiza para concluído
+    company.registrationStage = 'COMPLETED';
+    await this.companyRepo.save(company);
+
+    return {
+      id: company.id,
+      name: company.name,
+      email: company.email,
+      cnpj: company.cnpj,
+      stage: 'COMPLETED',
+      message: 'Cadastro da empresa realizado com sucesso!',
+    };
+  }
+
   // -----------------------------
   // CHECAGEM DE UNICIDADE
   // -----------------------------
@@ -52,7 +114,7 @@ export class CompanyService {
 
     if (!available) {
       throw new ConflictException(
-        `Já existe empresa com: ${conflicts.join(' e ')}`,
+        `Já existe empresa com: ${conflicts.join(' e ')}`
       );
     }
 
@@ -129,7 +191,6 @@ export class CompanyService {
     };
   }
 
-
   // -----------------------------
   // CONSULTAS
   // -----------------------------
@@ -144,6 +205,4 @@ export class CompanyService {
   async findByEmail(email: string) {
     return this.companyRepo.findByEmail(email);
   }
-
-
 }

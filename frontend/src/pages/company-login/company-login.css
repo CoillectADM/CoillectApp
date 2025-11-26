@@ -1,0 +1,43 @@
+.company-login-container {
+  max-width: 350px;
+  margin: 80px auto;
+  background: #222;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #00000030;
+  padding: 30px 24px;
+  color: #fff;
+  text-align: center;
+}
+.company-login-container input {
+  margin: 14px 0;
+  width: 90%;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 1rem;
+}
+.company-login-container button {
+  background: #9ab95a;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 12px 0;
+  width: 100%;
+  font-size: 1.05rem;
+  margin-top: 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.company-login-container .message {
+  margin-top: 16px;
+  color: #87d56d;
+}
+.token-alert {
+  background: #282;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 16px;
+  font-size: 0.9rem;
+  word-break: break-all;
+}

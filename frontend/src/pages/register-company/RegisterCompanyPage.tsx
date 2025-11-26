@@ -1,152 +1,131 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Step1 from './Step1';
-import Step2 from './Step2';
-import Step3 from './Step3';
-import Step4 from './Step4';
-import axios from 'axios';
+import { useState } from 'react';
+import api from '../../api'; 
 import './register-company.css';
 
-
-export type Section = 'company' | 'address' | 'contact' | 'representative';
-
-interface CompanyFormData {
-  company: Record<string, any>;
-  address: Record<string, any>;
-  contact: Record<string, any>;
-  representative: Record<string, any>;
-}
-
 export default function RegisterCompanyPage() {
-  const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState<CompanyFormData>({
-    company: {},
-    address: {},
-    contact: {},
-    representative: {},
+  // Estado do formulário único
+  const [form, setForm] = useState({
+    // Company
+    name: '',
+    email: '',
+    cnpj: '',
+    password: '',
+    // Address
+    street: '',
+    number: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    cep: '',
+    // Contact
+    receptionPhone: '',
+    adminPhone: '',
+    extension: '',
+    contactEmail: '',
+    // Representative
+    repName: '',
+    repCpf: '',
+    repPosition: '',
+    repCommercialPhone: '',
+    repEmail: '',
+    repAddress: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string>('');
 
-  useEffect(() => {
-    console.log('🔄 Página RegisterCompanyPage montada. Etapa inicial:', step);
-  }, []);
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }
 
-  const nextStep = () => {
-    console.log(`➡️ Indo para a próxima etapa: ${step + 1}`);
-    setStep((prev) => prev + 1);
-  };
-
-  const prevStep = () => {
-    console.log(`⬅️ Retornando para etapa anterior: ${step - 1}`);
-    setStep((prev) => prev - 1);
-  };
-
-  const updateData = (section: Section, data: any) => {
-    console.log(`📝 Atualizando seção "${section}" com dados:`, data);
-    setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [section]: {
-          ...prev[section],
-          ...data,
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+    try {
+      const payload = {
+        company: {
+          name: form.name,
+          email: form.email,
+          cnpj: form.cnpj,
+          password: form.password,
+        },
+        address: {
+          street: form.street,
+          number: form.number,
+          neighborhood: form.neighborhood,
+          city: form.city,
+          state: form.state,
+          cep: form.cep,
+        },
+        contact: {
+          receptionPhone: form.receptionPhone,
+          adminPhone: form.adminPhone,
+          extension: form.extension,
+          email: form.contactEmail,
+        },
+        representative: {
+          name: form.repName,
+          cpf: form.repCpf,
+          position: form.repPosition,
+          commercialPhone: form.repCommercialPhone,
+          email: form.repEmail,
+          address: form.repAddress,
         },
       };
-      console.log('🗃️ Estado atualizado do formulário:', updated);
-      return updated;
-    });
-  };
-
-  const validateFields = (): boolean => {
-    console.log('🔎 Iniciando validação dos dados antes do envio...');
-    const { company, contact, representative } = formData;
-
-    console.log('📋 Dados para validação:');
-    console.log(' - Company:', company);
-    console.log(' - Contact:', contact);
-    console.log(' - Representative:', representative);
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const cnpjRegex = /^\d{14}$/;
-    const phoneRegex = /^\(?\d{2}\)?[\s-]?\d{4,5}-?\d{4}$/;
-
-    if (!emailRegex.test(company.email)) {
-      alert('⚠️ E-mail da empresa inválido.');
-      return false;
-    }
-    if (!emailRegex.test(contact.email)) {
-      alert('⚠️ E-mail de contato inválido.');
-      return false;
-    }
-    if (!emailRegex.test(representative.email)) {
-      alert('⚠️ E-mail do representante inválido.');
-      return false;
-    }
-
-    const sanitizedCNPJ = company.cnpj.replace(/\D/g, '');
-    console.log('🔢 CNPJ sanitizado:', sanitizedCNPJ);
-    if (!cnpjRegex.test(sanitizedCNPJ)) {
-      alert('⚠️ CNPJ inválido. Use apenas números (14 dígitos).');
-      return false;
-    }
-
-    const phones = [contact.receptionPhone, contact.adminPhone, representative.commercialPhone];
-    phones.forEach((p, i) => console.log(`📞 Telefone [${i}]:`, p));
-    if (!phones.every(phone => phoneRegex.test(phone))) {
-      alert('⚠️ Verifique os telefones. Use formato (11) 91234-5678.');
-      return false;
-    }
-
-    console.log('✅ Validação concluída com sucesso.');
-    return true;
-  };
-
-  const submitData = async () => {
-    console.log('📤 Tentando submeter os dados...');
-    if (!validateFields()) {
-      console.warn('🚫 Validação falhou. Envio cancelado.');
-      return;
-    }
-
-    console.log('📦 Dados finalizados para envio:', JSON.stringify(formData, null, 2));
-
-    try {
-      const response = await axios.post('http://localhost:3000/api/company/register', formData);
-      console.log('✅ Empresa cadastrada com sucesso!');
-      console.log('🧾 Resposta do backend:', response.data);
-      alert('Cadastro realizado com sucesso!');
-
-      setFormData({
-        company: {},
-        address: {},
-        contact: {},
-        representative: {},
-      });
-      setStep(1);
-      navigate('/login');
+      const res = await api.post('/company/register', payload);
+      setMessage(res.data.message || 'Cadastro realizado com sucesso!');
     } catch (err: any) {
-      console.error('❌ Erro ao cadastrar empresa:', err);
-      console.error('📨 Resposta do backend:', err.response?.data);
-      alert('Erro no cadastro. Verifique os dados e tente novamente.');
+      setMessage(
+        err?.response?.data?.message ||
+        'Erro ao cadastrar. Verifique os dados e tente novamente.'
+      );
     }
-  };
+    setLoading(false);
+  }
 
   return (
     <div className="register-company-container">
-      <h2>Cadastro de Empresa - Etapa {step}/4</h2>
+      <form onSubmit={handleSubmit}>
+        <h2>Cadastro de Empresa Coletora</h2>
 
-      {/* 🔵 Barra de progresso visual */}
-      <div className="progress-bar">
-        <div
-          className="progress-bar-fill"
-          style={{ width: `${(step / 4) * 100}%` }}
-        ></div>
-      </div>
+        {/* Bloco 1: Dados básicos da empresa */}
+        <h3>Dados da empresa</h3>
+        <input name="name" placeholder="Nome da empresa" value={form.name} onChange={handleChange} required />
+        <input name="email" placeholder="E-mail da empresa" value={form.email} onChange={handleChange} required />
+        <input name="cnpj" placeholder="CNPJ" value={form.cnpj} onChange={handleChange} required />
+        <input name="password" type="password" placeholder="Senha" value={form.password} onChange={handleChange} required />
 
-      {/* Formulário dividido por etapas */}
-      {step === 1 && <Step1 nextStep={nextStep} updateData={updateData} />}
-      {step === 2 && <Step2 nextStep={nextStep} prevStep={prevStep} updateData={updateData} />}
-      {step === 3 && <Step3 nextStep={nextStep} prevStep={prevStep} updateData={updateData} />}
-      {step === 4 && <Step4 prevStep={prevStep} updateData={updateData} submitData={submitData} />}
+        {/* Bloco 2: Endereço */}
+        <h3>Endereço</h3>
+        <input name="street" placeholder="Rua" value={form.street} onChange={handleChange} required />
+        <input name="number" placeholder="Número" value={form.number} onChange={handleChange} required />
+        <input name="neighborhood" placeholder="Bairro" value={form.neighborhood} onChange={handleChange} required />
+        <input name="city" placeholder="Cidade" value={form.city} onChange={handleChange} required />
+        <input name="state" placeholder="Estado" value={form.state} onChange={handleChange} required />
+        <input name="cep" placeholder="CEP" value={form.cep} onChange={handleChange} required />
+
+        {/* Bloco 3: Contato */}
+        <h3>Contato administrativo</h3>
+        <input name="receptionPhone" placeholder="Telefone Recepção" value={form.receptionPhone} onChange={handleChange} required />
+        <input name="adminPhone" placeholder="Telefone Administrativo" value={form.adminPhone} onChange={handleChange} required />
+        <input name="extension" placeholder="Ramal" value={form.extension} onChange={handleChange} required />
+        <input name="contactEmail" placeholder="E-mail do contato" value={form.contactEmail} onChange={handleChange} required />
+
+        {/* Bloco 4: Representante */}
+        <h3>Representante legal</h3>
+        <input name="repName" placeholder="Nome completo" value={form.repName} onChange={handleChange} required />
+        <input name="repCpf" placeholder="CPF" value={form.repCpf} onChange={handleChange} required />
+        <input name="repPosition" placeholder="Cargo" value={form.repPosition} onChange={handleChange} required />
+        <input name="repCommercialPhone" placeholder="Telefone comercial" value={form.repCommercialPhone} onChange={handleChange} required />
+        <input name="repEmail" placeholder="E-mail do representante" value={form.repEmail} onChange={handleChange} required />
+        <input name="repAddress" placeholder="Endereço do representante" value={form.repAddress} onChange={handleChange} required />
+
+        <button type="submit" disabled={loading} style={{ marginTop: '20px' }}>
+          Finalizar Cadastro
+        </button>
+        {message && <div className="message">{message}</div>}
+      </form>
     </div>
   );
 }

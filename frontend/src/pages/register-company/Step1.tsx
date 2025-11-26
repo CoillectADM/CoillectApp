@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import type { Section } from './RegisterCompanyPage';
+
+type Section = 'company' | 'address' | 'contact' | 'representative';
+
 
 
 interface Step1Props {

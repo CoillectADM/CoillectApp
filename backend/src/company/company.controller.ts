@@ -20,9 +20,26 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
-  // -----------------------------
+  // NOVO: Cadastro Completo em uma chamada
+  @Post('register')
+  @ApiOperation({ summary: 'Cadastro completo de empresa em uma chamada' })
+  @ApiResponse({ status: 201, description: 'Empresa cadastrada com sucesso' })
+  async registerFull(@Body() body: {
+    company: CreateCompanyDto,
+    address: CreateCompanyAddressDto,
+    contact: CreateCompanyContactDto,
+    representative: CreateCompanyRepresentativeDto
+  }): Promise<APIResponse> {
+    const result = await this.companyService.registerFullCompany(body);
+    return new APIResponse()
+      .setData(result)
+      .setError(false)
+      .setStatusCode(201)
+      .setMessage('Empresa cadastrada com sucesso')
+      .build();
+  }
+
   // CHECAGEM DE DISPONIBILIDADE
-  // -----------------------------
   @Get('check')
   @ApiOperation({ summary: 'Checa disponibilidade de email e/ou CNPJ' })
   @ApiQuery({ name: 'email', required: false })
@@ -41,9 +58,7 @@ export class CompanyController {
       .build();
   }
 
-  // -----------------------------
-  // ETAPA 1
-  // -----------------------------
+  // ETAPA 1 (mantido para compatibilidade)
   @Post('register/step1')
   @ApiOperation({ summary: 'Etapa 1 - Dados básicos da empresa' })
   @ApiResponse({ status: 201, description: 'Empresa criada parcialmente' })
@@ -58,9 +73,7 @@ export class CompanyController {
       .build();
   }
 
-  // -----------------------------
-  // ETAPA 2
-  // -----------------------------
+  // ETAPA 2 (mantido para compatibilidade)
   @Post('register/address/:companyId')
   @ApiOperation({ summary: 'Etapa 2 - Cadastro de endereço' })
   @ApiResponse({ status: 201, description: 'Endereço cadastrado com sucesso' })
@@ -78,9 +91,7 @@ export class CompanyController {
       .build();
   }
 
-  // -----------------------------
-  // ETAPA 3 - Contato
-  // -----------------------------
+  // ETAPA 3
   @Post('register/contact/:companyId')
   @ApiOperation({ summary: 'Etapa 3 - Cadastro de contato' })
   @ApiResponse({ status: 201, description: 'Contato cadastrado com sucesso' })
@@ -97,10 +108,8 @@ export class CompanyController {
       .setMessage('Etapa 3 concluída (contato cadastrado)')
       .build();
   }
-  
-  // -----------------------------
-  // ETAPA 4 - Representante
-  // -----------------------------
+
+  // ETAPA 4
   @Post('register/representative/:companyId')
   @ApiOperation({ summary: 'Etapa 4 - Cadastro de representante' })
   @ApiResponse({ status: 201, description: 'Representante cadastrado com sucesso' })
@@ -118,10 +127,7 @@ export class CompanyController {
       .build();
   }
 
-
-  // -----------------------------
   // CONSULTAS
-  // -----------------------------
   @Get()
   @ApiOperation({ summary: 'Lista todas as empresas' })
   async findAll(): Promise<APIResponse> {
