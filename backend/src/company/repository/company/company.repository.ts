@@ -27,13 +27,13 @@ export class CompanyRepository {
     });
   }
 
+  // Para listagem na dashboard: só id, name, iconeUrl
   async findAll(): Promise<Company[]> {
-    return this.companyRepo.find({
-      relations: ['addresses', 'contacts', 'representative'],
-    });
+    return this.companyRepo.createQueryBuilder('company')
+      .select(['company.id', 'company.name', 'company.iconeUrl'])
+      .getMany();
   }
 
-  // ✅ Novo método adicionado:
   async save(company: Company): Promise<Company> {
     return this.companyRepo.save(company);
   }
@@ -44,8 +44,7 @@ export class CompanyRepository {
 
   async findByEmail(email: string): Promise<Company | null> {
     return this.companyRepo.findOne({
-    where: { email },
+      where: { email },
     });
   }
-
 }

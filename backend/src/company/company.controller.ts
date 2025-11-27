@@ -5,6 +5,8 @@ import {
   Param,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { APIResponse } from 'src/utils/response/response';
@@ -12,6 +14,10 @@ import { CreateCompanyDto } from './dto/create-company/create-company.dto';
 import { CreateCompanyAddressDto } from './dto/create-company-address/create-company-address.dto';
 import { CreateCompanyContactDto } from './dto/create-company-contact/create-company-contact.dto';
 import { CreateCompanyRepresentativeDto } from './dto/create-company-representative/create-company-representative.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { Express } from 'express';
 
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
@@ -151,4 +157,45 @@ export class CompanyController {
       .setMessage('Empresa encontrada com sucesso')
       .build();
   }
+
+      // UPLOAD DE ÍCONE
+    @Post('icon/upload/:companyId')
+    @UseInterceptors(
+      FileInterceptor('icon', {
+        storage: diskStorage({
+          destination: './uploads/company-icons',
+          filename: (req, file, cb) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+            const ext = extname(file.originalname);
+            cb(null, `company-${req.params.companyId}-${uniqueSuffix}${ext}`);
+          },
+        }),
+        fileFilter: (req, file, cb) => {
+          if (!file.mimetype.startsWith('image/')) {
+            return cb(new Error('Apenas arquivos de imagem são permitidos'), false);
+          }
+          cb(null, true);
+        },
+        limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+      }),
+    )
+    async uploadIcon(
+      @Param('companyId') companyId: number,
+      @UploadedFile() file: any,
+    ): Promise<APIResponse> {
+      const publicPath = `/uploads/company-icons/${file.filename}`;
+
+      const result = await this.companyService.updateCompanyIconFile(
+        companyId,
+        publicPath,
+      );
+
+      return new APIResponse()
+        .setData(result)
+        .setError(false)
+        .setStatusCode(200)
+        .setMessage('Ícone atualizado com sucesso')
+        .build();
+    }
+  
 }

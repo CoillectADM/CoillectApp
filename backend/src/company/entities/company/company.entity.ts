@@ -31,6 +31,10 @@ export class Company {
   @Column({ default: 'company' })
   role: string;
 
+  @Column({ nullable: true })
+  iconeUrl: string;
+
+
   // 👇 Nova coluna adicionada para rastrear o progresso do cadastro
   @Column({ type: 'varchar', length: 12, default: 'STEP_1' })
 registrationStage: 'STEP_1' | 'STEP_2' | 'STEP_3' | 'STEP_4' | 'COMPLETED';

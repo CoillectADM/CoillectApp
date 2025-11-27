@@ -191,18 +191,40 @@ export class CompanyService {
     };
   }
 
+
+     // -----------------------------
+    // ÍCONE DA EMPRESA (UPLOAD)
+    // -----------------------------
+    async updateCompanyIconFile(companyId: number, filePath: string) {
+      const company = await this.companyRepo.findById(companyId);
+      if (!company) {
+        throw new NotFoundException('Empresa não encontrada');
+      }
+
+      company.iconeUrl = filePath;
+      await this.companyRepo.save(company);
+
+      return {
+        id: company.id,
+        iconeUrl: company.iconeUrl,
+        message: 'Ícone atualizado com sucesso',
+      };
+    }
+
   // -----------------------------
   // CONSULTAS
   // -----------------------------
   async getAllCompanies() {
+    // Se quiser limitar os campos no futuro, faça isso dentro do repository
     return this.companyRepo.findAll();
   }
-
+  
   async findByCnpj(cnpj: string) {
     return this.companyRepo.findByCnpj(cnpj);
   }
-
+  
   async findByEmail(email: string) {
     return this.companyRepo.findByEmail(email);
   }
+  
 }
