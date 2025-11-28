@@ -8,22 +8,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-const handleLogin = async (e: React.FormEvent) => { 
+const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
   try {
-    const response = await api.post('/auth/login', {
+    const response = await api.post("/auth/login", {
       email,
       password,
     });
 
-    // Você pode salvar o token aqui se quiser
+    // Pega o access_token que o backend retorna
     const token = response.data.access_token;
-    console.log('Token:', token);
+    console.log("Token:", token);
+
+    // Salva no localStorage com a mesma chave que o interceptor usa
+    localStorage.setItem("token", token);
 
     // Redireciona para o dashboard
-    navigate('/dashboard');
+    navigate("/user-home");
   } catch (error) {
-    alert('Email ou senha inválidos');
+    alert("Email ou senha inválidos");
   }
 };
 

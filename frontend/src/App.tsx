@@ -1,35 +1,39 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import RegisterPage from './pages/register-user/register/RegisterPage';
-import LoginPage from './pages/register-user/login';
-import DashboardPage from './pages/register-user/dashboard';  // Certifique-se de importar corretamente
-import RegisterCompanyPage from './pages/register-company/RegisterCompanyPage';
-import CompanyLoginPage from './pages/company-login/CompanyLoginPage';
-import CompanyHomePage from './pages/company-login/CompanyHomePage';
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import RegisterPage from "./pages/register-user/register/RegisterPage";
+import LoginPage from "./pages/register-user/login";
+import DashboardPage from "./pages/register-user/dashboard";
+import RegisterCompanyPage from "./pages/register-company/RegisterCompanyPage";
+import CompanyLoginPage from "./pages/company-login/CompanyLoginPage";
+import CompanyHomePage from "./pages/company-login/CompanyHomePage";
 
-
-
-// Outras importações...
+import UserHomeMenu from "./pages/user-home/UserHomeMenu";
+import UserHistoryPage from "./pages/user-home/UserHistoryPage";
+import CompanyHomeMenu from "./pages/company-home/CompanyHomeMenu";
+import CompanyHistoryPage from "./pages/company-home/CompanyHistoryPage";
+import CompanyIconPage from "./pages/company-login/CompanyIconPage";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Rota para Login */}
         <Route path="/login" element={<LoginPage />} />
-        
-        {/* Rota para Registro */}
         <Route path="/register" element={<RegisterPage />} />
-        
-        {/* Rota para o Dashboard (após login) */}
+
+        {/* área do usuário */}
+        <Route path="/user-home" element={<UserHomeMenu />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        
+        <Route path="/user-history" element={<UserHistoryPage />} />
+
+        {/* empresa */}
         <Route path="/register-company" element={<RegisterCompanyPage />} />
-
         <Route path="/company-login" element={<CompanyLoginPage />} />
-
+        <Route path="/company-home-menu" element={<CompanyHomeMenu />} />
         <Route path="/company-home" element={<CompanyHomePage />} />
+        <Route path="/company-history" element={<CompanyHistoryPage />} />
+        <Route path="/company-icon" element={<CompanyIconPage />} />
 
-        {/* Outras rotas que você tenha */}
+        {/* opcional: rota padrão */}
+        <Route path="*" element={<LoginPage />} />
       </Routes>
     </Router>
   );

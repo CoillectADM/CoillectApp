@@ -21,10 +21,8 @@ export class UserService {
     private readonly userAddressRepository: UserAddressRepository,
     private readonly userPhoneRepository: UserPhoneNumberRepository,
   ) {}
-  async findOneById(id: number): Promise<{ user: User }> {
-    return {
-      user: await this.userRepository.findOneById(id),
-    };
+  async findOneById(id: number): Promise<User> {
+  return this.userRepository.findOneById(id);
   }
 
   async findOneByEmail(email: string): Promise<User | null> {

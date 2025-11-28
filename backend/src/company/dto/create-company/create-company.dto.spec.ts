@@ -7,7 +7,6 @@ describe('CreateCompanyDto', () => {
     dto.email = 'contato@greenoil.com';
     dto.password = '123456';
     dto.cnpj = '12.345.678/0001-90';
-    dto.description = 'Empresa de reciclagem de óleo';
 
     expect(dto).toBeInstanceOf(CreateCompanyDto);
     expect(dto.name).toBe('GreenOil');

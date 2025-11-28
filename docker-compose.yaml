@@ -44,8 +44,8 @@ services:
       - "3000:3000"
     networks:
       - appnet
-    #volumes:
-    #  - ./backend:/usr/src/app
+    volumes:
+      - ./backend/uploads:/usr/src/app/uploads
 
   frontend:
     build:
@@ -58,8 +58,8 @@ services:
       - "8080:80"
     networks:
       - appnet
-    #volumes:
-    #  - ./frontend:/app
+    volumes:
+      - ./backend/uploads:/usr/share/nginx/html/uploads
 
 volumes:
   db-data:

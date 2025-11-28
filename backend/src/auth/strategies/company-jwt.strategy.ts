@@ -9,11 +9,13 @@ export class CompanyJwtStrategy extends PassportStrategy(Strategy, 'company-jwt'
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_COMPANY_SECRET || 'company_secret',
+      // usar o MESMO segredo do JwtModule
+      secretOrKey: process.env.JWT_SECRET || 'supersegredo123',
     });
   }
 
   async validate(payload: any) {
-    return { id: payload.sub, email: payload.email, role: payload.role };
+    // manter o formato simples, só garantir que sub chega
+    return { sub: payload.sub, email: payload.email, role: payload.role };
   }
 }

@@ -226,5 +226,9 @@ export class CompanyService {
   async findByEmail(email: string) {
     return this.companyRepo.findByEmail(email);
   }
+
+  async findById(id: number) {
+    return this.companyRepo.findById(id); // ou findOne({ where: { id } });
+  }
   
 }

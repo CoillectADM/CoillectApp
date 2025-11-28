@@ -15,6 +15,9 @@ import { CompanyAddress } from './company/entities/company_address/company-addre
 import { CompanyContact } from './company/entities/company_contact/company-contact.entity';
 import { CompanyRepresentative } from './company/entities/company_representative/company-representative.entity';
 
+import { CollectionRequest } from './collection-request/collection-request.entity';
+import { CollectionRequestModule } from './collection-request/collection-request.module';
+
 @Module({
   imports: [
     TypeOrmModule.forRoot({
@@ -31,6 +34,7 @@ import { CompanyRepresentative } from './company/entities/company_representative
         CompanyAddress,
         CompanyContact,
         CompanyRepresentative,
+        CollectionRequest,
       ],
       autoLoadEntities: true,
       synchronize: true,
@@ -39,6 +43,7 @@ import { CompanyRepresentative } from './company/entities/company_representative
     UserModule,
     AuthModule,
     CompanyModule,
+    CollectionRequestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

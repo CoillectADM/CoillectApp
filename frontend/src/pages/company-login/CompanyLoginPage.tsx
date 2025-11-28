@@ -1,34 +1,58 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 import api from "../../api";
 import "./company-login.css";
 import Logo from "../../components/Logo";
-import { useNavigate } from "react-router-dom";
+
+type CompanyTokenPayload = {
+  sub: number;   // id da empresa
+  email: string;
+  role: string;
+  iat?: number;
+  exp?: number;
+};
+
+type LoginForm = {
+  email: string;
+  password: string;
+};
 
 export default function CompanyLoginPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState<LoginForm>({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  function handleChange(e) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setMessage("");
     try {
-      const res = await api.post("/auth/company/login", form);
-      console.log("Token da empresa:", res.data.access_token);
+      const res = await api.post<{ access_token: string }>("/auth/company/login", form);
+
+      const token = res.data.access_token as string;
+
+      console.log("Token da empresa:", token);
       setMessage("Login realizado com sucesso");
-      localStorage.setItem("company_token", res.data.access_token);
-      setTimeout(() => navigate('/company-home'), 900); // Redireciona após 0.9s
-    } catch (err) {
+
+      localStorage.setItem("company_token", token);
+
+      const payload = jwtDecode<CompanyTokenPayload>(token);
+      if (payload?.sub) {
+        localStorage.setItem("company_id", String(payload.sub));
+      }
+
+      setTimeout(() => navigate("/company-home-menu"), 900);
+    } catch (err: any) {
       setMessage(
         err?.response?.data?.message ||
-        "Erro ao logar. Verifique e tente novamente."
+          "Erro ao logar. Verifique e tente novamente."
       );
     }
     setLoading(false);
