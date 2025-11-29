@@ -1,43 +1,125 @@
 .company-login-container {
-  max-width: 350px;
-  margin: 80px auto;
-  background: #222;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px #00000030;
-  padding: 30px 24px;
-  color: #fff;
+  max-width: 420px;
+  margin: 80px auto 20px;
+  background: var(--color-surface);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-border);
+  padding: 40px 32px;
+  color: var(--color-text-light);
   text-align: center;
+  animation: slideUp 0.4s ease;
 }
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.company-login-container h2 {
+  color: var(--color-primary);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 32px;
+  margin-top: 0;
+}
+
+.company-login-container img {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 24px;
+  filter: drop-shadow(0 2px 4px rgba(76, 175, 80, 0.2));
+}
+
 .company-login-container input {
   margin: 14px 0;
-  width: 90%;
-  padding: 10px;
-  border-radius: 6px;
-  border: none;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
   font-size: 1rem;
+  background-color: var(--color-background);
+  color: var(--color-text-light);
+  box-sizing: border-box;
+  transition: all 0.3s ease;
 }
+
+.company-login-container input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.company-login-container input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
 .company-login-container button {
-  background: #9ab95a;
-  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: var(--color-background);
   border: none;
-  border-radius: 7px;
-  padding: 12px 0;
+  border-radius: 8px;
+  padding: 14px;
   width: 100%;
   font-size: 1.05rem;
-  margin-top: 12px;
+  margin-top: 24px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 700;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
+.company-login-container button:hover {
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+}
+
 .company-login-container .message {
   margin-top: 16px;
-  color: #87d56d;
+  color: var(--color-primary);
+  font-weight: 600;
 }
+
 .token-alert {
-  background: #282;
-  color: #fff;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
   border-radius: 8px;
-  padding: 10px;
-  margin-top: 16px;
+  padding: 14px;
+  margin-top: 20px;
   font-size: 0.9rem;
   word-break: break-all;
+  font-weight: 500;
+}
+
+/* Responsividade */
+@media (max-width: 480px) {
+  .company-login-container {
+    padding: 28px 20px;
+    margin: 40px 20px 20px;
+  }
+
+  .company-login-container h2 {
+    font-size: 1.4rem;
+  }
+
+  .company-login-container input {
+    font-size: 0.95em;
+    padding: 10px 12px;
+  }
+
+  .company-login-container button {
+    font-size: 1em;
+    padding: 12px;
+  }
 }

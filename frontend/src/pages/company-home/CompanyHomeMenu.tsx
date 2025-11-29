@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import "../user-home/user-home.css"; // reutiliza estilos básicos
+import "../user-home/user-home.css";
+import Logo1 from "../../assets/Logo1.png";
 
 export default function CompanyHomeMenu() {
   const navigate = useNavigate();
@@ -13,21 +14,26 @@ export default function CompanyHomeMenu() {
   return (
     <div className="home-container">
       <header className="home-header">
-        <h2>Área da Empresa</h2>
-        <div className="header-dropdown">
-          <button className="header-avatar">☰</button>
-          <div className="header-menu">
-            <button type="button" onClick={() => alert("Configurações em breve")}>
-              Configurações
-            </button>
-            <button type="button" onClick={() => alert("Ajuda em breve")}>
-              Ajuda
-            </button>
-            <button type="button" onClick={logout}>
-              Sair
-            </button>
+        <div className="header-top-bar">
+          <img src={Logo1} alt="Coillect" className="home-logo" />
+
+          <div className="header-dropdown">
+            <button className="header-avatar">☰</button>
+            <div className="header-menu">
+              <button type="button" onClick={() => alert("Configurações em breve")}>
+                Configurações
+              </button>
+              <button type="button" onClick={() => alert("Ajuda em breve")}>
+                Ajuda
+              </button>
+              <button type="button" onClick={logout}>
+                Sair
+              </button>
+            </div>
           </div>
         </div>
+
+        <h2 className="home-title">Bem-vindo à Coillect!</h2>
       </header>
 
       <main className="home-main">

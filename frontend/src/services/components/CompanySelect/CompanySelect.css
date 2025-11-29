@@ -1,0 +1,102 @@
+.company-select-container {
+  width: 100%;
+  max-width: 500px;
+  margin: 20px auto;
+  padding: 24px;
+  background-color: var(--color-surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border);
+}
+
+.company-select-container h3 {
+  color: var(--color-primary);
+  font-size: 1.3rem;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.company-select-container label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-text-light);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.company-select-container select {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background-color: var(--color-background);
+  color: var(--color-text-light);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.company-select-container select:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.company-select-container select option {
+  background-color: var(--color-background);
+  color: var(--color-text-light);
+}
+
+.company-select-container button {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  border: none;
+  border-radius: 8px;
+  color: var(--color-background);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.company-select-container button:hover {
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+}
+
+.company-select-container button:disabled {
+  background: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 480px) {
+  .company-select-container {
+    padding: 20px;
+    margin: 16px;
+  }
+
+  .company-select-container h3 {
+    font-size: 1.1rem;
+  }
+
+  .company-select-container select {
+    font-size: 0.95rem;
+    padding: 10px 12px;
+  }
+
+  .company-select-container button {
+    font-size: 0.95rem;
+    padding: 10px;
+  }
+}

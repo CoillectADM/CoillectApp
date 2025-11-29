@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api/axios';
 import './login.css';
+import Logo1 from "../../../assets/Logo1.png";
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -33,6 +35,7 @@ const handleLogin = async (e: React.FormEvent) => {
 
   return (
     <div className="login-container">
+      <img src={Logo1} alt="Coillect" className="login-logo" />
       <h2>Login</h2>
       <form onSubmit={handleLogin}>
         <input

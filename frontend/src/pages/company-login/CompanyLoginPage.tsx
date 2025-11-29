@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import api from "../../api";
 import "./company-login.css";
-import Logo from "../../components/Logo";
+import Logo1 from "../../assets/Logo1.png";
+
 
 type CompanyTokenPayload = {
   sub: number;   // id da empresa
@@ -60,7 +61,7 @@ export default function CompanyLoginPage() {
 
   return (
     <div className="company-login-container">
-      <Logo />
+      <img src={Logo1} alt="Coillect" className="login-logo" />
       <form onSubmit={handleSubmit}>
         <h2>Login Empresa</h2>
         <input

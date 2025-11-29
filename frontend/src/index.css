@@ -1,11 +1,22 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  /* Paleta de Cores Coillect */
+  --color-primary: #4CAF50; /* Verde Principal (Ação/Sucesso) */
+  --color-primary-dark: #388E3C; /* Verde Escuro */
+  --color-secondary: #0077B6; /* Azul Secundário (Informação) */
+  --color-danger: #D32F2F; /* Vermelho (Perigo/Cancelar) */
+  --color-background: #121212; /* Fundo Escuro Principal */
+  --color-surface: #1E1E1E; /* Superfície de Cards/Containers */
+  --color-text-light: #FFFFFF; /* Texto Principal Claro */
+  --color-text-muted: #B0B0B0; /* Texto Secundário/Inativo */
+  --color-border: #333333; /* Borda/Divisor */
+
+  /* Tipografia */
+  font-family: 'Roboto', sans-serif; /* Usando Roboto como um padrão moderno */
+  line-height: 1.6;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--color-text-light);
+  background-color: var(--color-background);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,58 +24,120 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* Reset Básico */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-background);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Links */
+a {
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: var(--color-primary-dark);
 }
 
+/* Botões Padrão (Base) */
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  border: none;
+  padding: 0.8em 1.5em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: background-color 0.25s, transform 0.1s;
+  background-color: var(--color-surface);
+  color: var(--color-text-light);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 button:hover {
-  border-color: #646cff;
+  background-color: #2a2a2a;
+  transform: translateY(-1px);
 }
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+button:active {
+  transform: translateY(0);
 }
 
-
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Estilo para Botões Primários (Ação Principal) */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-background); /* Texto escuro no botão claro */
+  font-weight: 600;
 }
+.btn-primary:hover {
+  background-color: var(--color-primary-dark);
+  color: var(--color-text-light);
+}
+
+/* Estilo para Botões de Perigo (Cancelar/Excluir) */
+.btn-danger {
+  background-color: var(--color-danger);
+  color: var(--color-text-light);
+  font-weight: 600;
+}
+.btn-danger:hover {
+  background-color: #A52828;
+}
+
+/* Estilo para Botões Secundários (Outline) */
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+.btn-secondary:hover {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: var(--color-primary-dark);
+}
+
+/* Inputs de Texto */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: var(--color-surface);
+  color: var(--color-text-light);
+  transition: border-color 0.2s;
+}
+input:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+/* Títulos */
+h1, h2, h3 {
+  color: var(--color-text-light);
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+/* Card Base */
+.card {
+  background-color: var(--color-surface);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Utilitários */
+.text-center { text-align: center; }
+.text-primary { color: var(--color-primary); }
+.text-danger { color: var(--color-danger); }
+.text-muted { color: var(--color-text-muted); }
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-4 { margin-top: 1.5rem; }

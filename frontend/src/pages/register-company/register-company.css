@@ -7,9 +7,9 @@
 
 /* Corpo da página */
 body {
-  background-color: #1E1E1E;
-  color: #FFFFFF;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, var(--color-background) 0%, #1a1a1a 100%);
+  color: var(--color-text-light);
+  font-family: 'Roboto', sans-serif;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -19,96 +19,126 @@ body {
 
 /* Container do formulário */
 .register-company-container {
-  background-color: #2A2A2A;
+  background-color: var(--color-surface);
   width: 100%;
-  max-width: 480px;
-  padding: 24px;
+  max-width: 520px;
+  padding: 40px 32px;
   border-radius: 16px;
-  box-shadow: 0 0 16px rgba(140, 166, 78, 0.2);
-  animation: fadeIn 0.4s ease-in-out;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--color-border);
+  animation: slideUp 0.4s ease-in-out;
 }
 
 /* Animação leve de entrada */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo */
+.register-company-container img {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(76, 175, 80, 0.2));
 }
 
 /* Título principal */
 h2 {
-  color: #A0D268;
-  font-size: 1.4rem;
+  color: var(--color-primary);
+  font-size: 1.6rem;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
+  font-weight: 700;
 }
 
 /* Título interno */
 h3 {
-  color: #A0D268;
+  color: var(--color-primary);
   font-size: 1.1rem;
   margin-bottom: 16px;
   text-align: left;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Campo de input e textarea */
 input,
 textarea {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 14px;
   margin-bottom: 16px;
   font-size: 1rem;
-  border-radius: 6px;
-  border: 1px solid #8CA64E;
-  background-color: #2C2C2C;
-  color: #FFFFFF;
-  transition: border-color 0.2s;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  color: var(--color-text-light);
+  font-family: 'Roboto', sans-serif;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
+  font-size: 0.95em;
 }
 
 input:focus,
 textarea:focus {
-  border-color: #A0D268;
+  border-color: var(--color-primary);
   outline: none;
-}
-
-/* Placeholder visível */
-input::placeholder,
-textarea::placeholder {
-  color: #bbbbbb;
-  font-size: 0.95em;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  background-color: rgba(76, 175, 80, 0.05);
 }
 
 /* Botões */
 button {
   width: 100%;
-  padding: 12px;
-  background-color: #8CA64E;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   border: none;
   border-radius: 8px;
-  color: white;
+  color: var(--color-background);
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.25s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 button:hover:not(:disabled) {
-  background-color: #7B9442;
+  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
 }
 
 button:disabled {
-  background-color: #5c6541;
+  background: var(--color-text-muted);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Botões lado a lado */
 .step > div {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .step > div button {
   flex: 1;
+  margin: 0;
 }
 
 /* Layout do step */
@@ -117,20 +147,48 @@ button:disabled {
   flex-direction: column;
 }
 
+/* Link para login */
+.register-company-container a {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.register-company-container a:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
 /* Ajuste para dispositivos menores */
 @media (max-width: 480px) {
   .register-company-container {
-    padding: 18px;
+    padding: 28px 20px;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+
+  h3 {
+    font-size: 1rem;
   }
 
   input,
   textarea {
     font-size: 0.95rem;
-    padding: 10px;
+    padding: 10px 12px;
   }
 
   button {
     font-size: 0.95rem;
-    padding: 10px;
+    padding: 12px;
+  }
+
+  .step > div {
+    gap: 8px;
   }
 }

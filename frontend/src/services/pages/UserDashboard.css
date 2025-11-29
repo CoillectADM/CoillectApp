@@ -1,0 +1,222 @@
+.user-dashboard-container {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--color-background) 0%, #1a1a1a 100%);
+  color: var(--color-text-light);
+  padding: 48px 20px;
+  box-sizing: border-box;
+}
+
+.dashboard-header {
+  max-width: 900px;
+  margin: 0 auto 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 0 8px;
+}
+
+.dashboard-header h1 {
+  font-size: 1.8rem;
+  color: var(--color-primary);
+  margin: 0;
+  flex: 1;
+  font-weight: 700;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.dashboard-header button {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  border: none;
+  border-radius: 8px;
+  color: var(--color-background);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+  font-size: 0.9rem;
+}
+
+.dashboard-header button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.dashboard-content {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.dashboard-card {
+  background-color: var(--color-surface);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-border);
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+.dashboard-card h3 {
+  color: var(--color-primary);
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dashboard-card p {
+  color: var(--color-text-muted);
+  margin: 8px 0;
+  font-size: 0.95rem;
+}
+
+.dashboard-card .stat-value {
+  color: var(--color-primary);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 16px 0;
+}
+
+.dashboard-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dashboard-list li {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.dashboard-list li:hover {
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.dashboard-list li:last-child {
+  border-bottom: none;
+}
+
+.dashboard-list .status {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status.active {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: var(--color-primary);
+}
+
+.status.pending {
+  background-color: rgba(0, 119, 182, 0.2);
+  color: var(--color-secondary);
+}
+
+.status.inactive {
+  background-color: rgba(211, 47, 47, 0.2);
+  color: var(--color-danger);
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dashboard-actions button {
+  flex: 1;
+  padding: 10px;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 6px;
+  color: var(--color-background);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.dashboard-actions button:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+.dashboard-actions button.danger {
+  background: var(--color-danger);
+}
+
+.dashboard-actions button.danger:hover {
+  background: #A52828;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-dashboard-container {
+    padding: 24px 16px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .dashboard-card {
+    padding: 16px;
+  }
+
+  .dashboard-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .dashboard-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .dashboard-actions {
+    flex-direction: column;
+  }
+
+  .dashboard-actions button {
+    width: 100%;
+  }
+}

@@ -121,7 +121,7 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-container">
       <div className="header">
-        <h3>Dashboard Usuário</h3>
+        <h3>Solicite uma Coleta!</h3>
         <div className="dropdown">
           <button className="dropdown-toggle">
             <i className="bi bi-person-circle"></i>
