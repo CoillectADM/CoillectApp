@@ -1,3 +1,4 @@
+// src/collection-request/collection-request.controller.ts
 import {
   Body,
   Controller,
@@ -8,11 +9,16 @@ import {
   Param,
 } from '@nestjs/common';
 import { CollectionRequestService } from './collection-request.service';
-import { CreateCollectionRequestDto } from '../collection-request/dto/create-collection-request.dto';
+import { CreateCollectionRequestDto } from './dto/create-collection-request.dto';
 import { JwtUserAuthGuard } from 'src/auth/guards/jwt-user.guard';
-import { JwtCompanyAuthGuard } from '../auth/guards/jwt-company.guard';
+import { JwtCompanyAuthGuard } from 'src/auth/guards/jwt-company.guard';
 import { APIResponse } from 'src/utils/response/response';
-import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiParam,
+} from '@nestjs/swagger';
 
 @ApiTags('collection-request')
 @ApiBearerAuth()
@@ -64,24 +70,29 @@ export class CollectionRequestController {
       .build();
   }
 
-    @UseGuards(JwtUserAuthGuard)
-    @Get('my-history')
-    @ApiOperation({ summary: 'Lista histórico de solicitações encerradas do usuário logado' })
-    async getMyHistory(@Req() req: any): Promise<APIResponse> {
-      const userId = req.user.sub;
-      const list = await this.collectionRequestService.getUserHistory(userId);
+  @UseGuards(JwtUserAuthGuard)
+  @Get('my-history')
+  @ApiOperation({ summary: 'Lista histórico de solicitações encerradas do usuário logado' })
+  async getMyHistory(@Req() req: any): Promise<APIResponse> {
+    const userId = req.user.sub;
+    const list = await this.collectionRequestService.getUserHistory(userId);
 
-      return new APIResponse()
-        .setData(list)
-        .setError(false)
-        .setStatusCode(200)
-        .setMessage('Histórico de solicitações do usuário')
-        .build();
-    }
+    return new APIResponse()
+      .setData(list)
+      .setError(false)
+      .setStatusCode(200)
+      .setMessage('Histórico de solicitações do usuário')
+      .build();
+  }
 
   @UseGuards(JwtUserAuthGuard)
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancela a solicitação do usuário logado' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID da solicitação de coleta',
+    example: 42,
+  })
   async cancelForUser(
     @Req() req: any,
     @Param('id') id: string,
@@ -103,6 +114,11 @@ export class CollectionRequestController {
   @UseGuards(JwtUserAuthGuard)
   @Post(':id/complete')
   @ApiOperation({ summary: 'Usuário confirma que a coleta foi realizada' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID da solicitação de coleta a ser concluída',
+    example: 42,
+  })
   async completeForUser(
     @Req() req: any,
     @Param('id') id: string,
@@ -137,24 +153,30 @@ export class CollectionRequestController {
       .build();
   }
 
-    @UseGuards(JwtCompanyAuthGuard)
-    @Get('company/history')
-    @ApiOperation({ summary: 'Lista histórico de solicitações encerradas da empresa logada' })
-    async getCompanyHistory(@Req() req: any): Promise<APIResponse> {
-      const companyId = req.user.sub;
-      const list = await this.collectionRequestService.getCompanyHistory(companyId);
-    
-      return new APIResponse()
-        .setData(list)
-        .setError(false)
-        .setStatusCode(200)
-        .setMessage('Histórico de solicitações da empresa')
-        .build();
-    }
+  @UseGuards(JwtCompanyAuthGuard)
+  @Get('company/history')
+  @ApiOperation({ summary: 'Lista histórico de solicitações encerradas da empresa logada' })
+  async getCompanyHistory(@Req() req: any): Promise<APIResponse> {
+    const companyId = req.user.sub;
+    const list =
+      await this.collectionRequestService.getCompanyHistory(companyId);
+
+    return new APIResponse()
+      .setData(list)
+      .setError(false)
+      .setStatusCode(200)
+      .setMessage('Histórico de solicitações da empresa')
+      .build();
+  }
 
   @UseGuards(JwtCompanyAuthGuard)
   @Post(':id/accept')
   @ApiOperation({ summary: 'Empresa aceita uma solicitação de coleta' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID da solicitação de coleta a ser aceita',
+    example: 42,
+  })
   async accept(
     @Req() req: any,
     @Param('id') id: string,
@@ -176,6 +198,11 @@ export class CollectionRequestController {
   @UseGuards(JwtCompanyAuthGuard)
   @Post(':id/refuse')
   @ApiOperation({ summary: 'Empresa recusa uma solicitação de coleta' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID da solicitação de coleta a ser recusada',
+    example: 42,
+  })
   async refuse(
     @Req() req: any,
     @Param('id') id: string,

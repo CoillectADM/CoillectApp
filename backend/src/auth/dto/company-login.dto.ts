@@ -1,10 +1,20 @@
 // src/auth/dto/company-login.dto.ts
-import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CompanyLoginDto {
-  @IsEmail({}, { message: 'E-mail inválido' })
+  @ApiProperty({
+    description: 'E-mail corporativo da empresa coletora',
+    example: 'contato@coletaeasy.com.br',
+  })
+  @IsEmail()
   email: string;
 
-  @IsNotEmpty({ message: 'Senha obrigatória' })
+  @ApiProperty({
+    description: 'Senha de acesso da empresa',
+    example: 'Empresa@2025',
+  })
+  @IsNotEmpty()
+  @IsString()
   password: string;
 }
