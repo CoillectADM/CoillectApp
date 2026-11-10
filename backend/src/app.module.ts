@@ -1,51 +1,34 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { buildDatabaseOptions } from './config/database.config';
+import { EventsModule } from './events/events.module';
+import { HealthController } from './health/health.controller';
+import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-
-import { UserAddress } from './user/entities/user_address/user_address';
-import { User } from './user/entities/user/user.entity';
-import { UserPhoneNumber } from './user/entities/user_phone_number/user_phone_number';
-
 import { CompanyModule } from './company/company.module';
-import { Company } from './company/entities/company/company.entity';
-import { CompanyAddress } from './company/entities/company_address/company-address.entity';
-import { CompanyContact } from './company/entities/company_contact/company-contact.entity';
-import { CompanyRepresentative } from './company/entities/company_representative/company-representative.entity';
-
-import { CollectionRequest } from './collection-request/collection-request.entity';
 import { CollectionRequestModule } from './collection-request/collection-request.module';
+import { SensorModule } from './sensor/sensor.module';
+import { NotificationModule } from './notification/notification.module';
+import { DemoModule } from './demo/demo.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      username: process.env.DATABASE_USER,
-      password: process.env.DATABASE_PASSWORD,
-      database: process.env.DATABASE_NAME,
-      port: parseInt(process.env.DATABASE_PORT),
-      host: process.env.DATABASE_HOST,
-      entities: [
-        UserAddress,
-        User,
-        UserPhoneNumber,
-        Company,
-        CompanyAddress,
-        CompanyContact,
-        CompanyRepresentative,
-        CollectionRequest,
-      ],
-      autoLoadEntities: true,
-      synchronize: true,
-      type: 'postgres',
-    }),
+    // Banco configurado por variáveis de ambiente (DATABASE_URL ou DATABASE_*): ver config/database.config.ts
+    TypeOrmModule.forRootAsync({ useFactory: () => buildDatabaseOptions() }),
+    EventsModule,
     UserModule,
     AuthModule,
     CompanyModule,
     CollectionRequestModule,
+    SensorModule,
+    NotificationModule,
+    DemoModule,
+    AdminModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 export class AppModule {}

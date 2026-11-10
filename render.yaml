@@ -1,0 +1,30 @@
+# Blueprint do Render (opcional): cria a API Coillect e um PostgreSQL gratuitos.
+# Render Dashboard → New → Blueprint → escolha este repositório.
+# Limites do plano gratuito: a API "dorme" após 15 min sem uso (~1 min para acordar)
+# e o PostgreSQL gratuito expira 30 dias após a criação. Detalhes em docs/deploy-cloud.md.
+services:
+  - type: web
+    name: coillect-api
+    runtime: docker
+    plan: free
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: coillect-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_DEMO
+        value: "true"
+
+databases:
+  - name: coillect-db
+    plan: free
+    databaseName: coillect
+    user: coillect

@@ -31,9 +31,12 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     environment:
       NODE_ENV: production
+      PORT: 3000
+      SEED_DEMO: "true"
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
