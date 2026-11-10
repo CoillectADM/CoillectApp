@@ -61,6 +61,10 @@ jobs:
         working-directory: backend
         run: npm run test:mvp 2>&1 | tee "$RUNNER_TEMP/3-unit.log"
 
+      - name: Script do endereço para os celulares (testes)
+        working-directory: backend
+        run: node --test scripts/endereco-celular.test.mjs
+
       - name: Fluxo e2e (sensor → empresa → síndico → admin)
         working-directory: backend
         env:
@@ -189,6 +193,9 @@ jobs:
         run: |
           node backend/scripts/smoke-flow.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/3-smoke.log"
           echo "::notice title=smoke-flow::$(grep -c '✓' "$RUNNER_TEMP/3-smoke.log") verificações OK contra o container (PORT=8080, DATABASE_URL)"
+
+      - name: Endereço para os celulares (scripts/endereco-celular.mjs)
+        run: node backend/scripts/endereco-celular.mjs --porta 8080
 
       - name: Mesma imagem com Azure Storage (Azurite no lugar da Storage Account)
         run: |

@@ -26,6 +26,7 @@ import { Sensor } from 'src/sensor/entities/sensor.entity';
 import { Barrel } from 'src/sensor/entities/barrel.entity';
 import { condominiumOf } from 'src/sensor/sensor-links';
 import { ScheduleCollectionDto } from './dto/schedule-collection.dto';
+import { barrelKey, barrelLock } from './barrel-lock';
 
 const CLOSED_STATUSES: CollectionRequestStatus[] = [
   'COMPLETED',
@@ -117,7 +118,18 @@ export class CollectionRequestService {
     const scheduledDate = dto.scheduledDate
       ? new Date(dto.scheduledDate)
       : undefined;
+    // Mesma trava do listener do sensor: "Agendar coleta" e uma leitura no
+    // limite chegando juntas não abrem duas solicitações para o barril.
+    return barrelLock.run(barrelKey(barrel.id), () =>
+      this.scheduleBarrel(companyId, barrel, scheduledDate),
+    );
+  }
 
+  private async scheduleBarrel(
+    companyId: number,
+    barrel: Barrel,
+    scheduledDate: Date | undefined,
+  ): Promise<CollectionRequest> {
     const open = await this.findOpenForBarrel(barrel.id);
     if (open) {
       if (open.company?.id !== companyId) {

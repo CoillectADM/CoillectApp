@@ -644,4 +644,38 @@ describe('Fluxo MVP Coillect (e2e)', () => {
       .send({ threshold: 50 })
       .expect(409);
   });
+
+  it('vários clientes ao mesmo tempo: leituras e "Agendar coleta" simultâneos abrem UMA solicitação do barril', async () => {
+    // Ex.: Wokwi, sensor virtual e "Simular leitura" no celular do síndico enviando
+    // juntos, enquanto a empresa toca em "Agendar coleta" no outro celular.
+    const atria = DEMO_SITES[2];
+    const responses: any[] = await Promise.all([
+      ...[86, 88, 90, 92, 94].map((level) => sendAlert(level, atria.sensorId)),
+      asCompany(
+        request(http)
+          .post('/api/collection-request/company/schedule')
+          .send({ sensorId: atria.sensorId }),
+      ),
+    ]);
+    const readings = responses.slice(0, 5);
+    const schedule = responses[5];
+    readings.forEach((res) => expect(res.status).toBe(201));
+    expect(schedule.status).toBe(201);
+
+    const ids = new Set([
+      ...readings.map((res) => res.body.data.collection.request?.id),
+      schedule.body.data.id,
+    ]);
+    expect(ids.size).toBe(1);
+    expect(
+      readings.filter((res) => res.body.data.collection.triggered).length,
+    ).toBeLessThanOrEqual(1);
+
+    const active = await asCompany(
+      request(http).get('/api/collection-request/company/active'),
+    ).expect(200);
+    expect(
+      active.body.data.filter((r: any) => r.barrel?.code === atria.barrelCode),
+    ).toHaveLength(1);
+  });
 });

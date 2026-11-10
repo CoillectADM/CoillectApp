@@ -89,7 +89,7 @@ PATCH admin/sensors/CLT-8472-A  { "barrelId": 2 }
 
 | Rota | Uso |
 |---|---|
-| `GET health` | API no ar e banco conectado (`data.database = "up"`, HTTP 503 se o banco cair); `data.storage` = `azure` ou `local`; usado pela cloud |
+| `GET health` | API no ar e banco conectado (`data.database = "up"`, HTTP 503 se o banco cair); `data.storage` = `azure` ou `local`; usado pela cloud e pelo botão **Testar conexão** dos apps do síndico e da empresa (sem login) |
 | `POST sensor-alert` | Leitura do sensor: ver [contrato-sensor.md](contrato-sensor.md). `POST sensor/readings` é o mesmo |
 | `GET sensor/{sensorId}/status` | Estado atual de um sensor (útil para o sensor virtual) |
 
@@ -183,3 +183,10 @@ Antes da conclusão (ou nos primeiros segundos depois dela, enquanto a fila proc
 ## Tempo limite nos apps
 
 Os três apps esperam até 15 s para conectar e 60 s pela resposta: uma API em plano que "dorme" (Render gratuito, App Service sem Always On) leva até ~1 min para acordar. Ver [deploy-cloud.md](deploy-cloud.md).
+
+## Celulares e vários clientes ao mesmo tempo
+
+- Os apps não falam entre si: os dois celulares, o desktop e o sensor usam a **mesma URL base** da API e os apps atualizam a tela a cada 5 s.
+- O campo **Servidor da API** aceita só o IP ou o domínio: o app completa `http://`/`https://`, a porta 3000 (quando é IP) e o `/api`. O botão **Testar conexão** chama `GET health` antes do login.
+- API rodando no PC: `node backend/scripts/endereco-celular.mjs` mostra o endereço para os celulares (sem os adaptadores do WSL/Docker) e o comando para liberar a porta no firewall do Windows.
+- Leituras simultâneas do mesmo barril e um **Agendar coleta** chegando junto abrem **uma única** solicitação: a API processa um barril por vez (`collection-request/barrel-lock.ts`), com teste e2e de concorrência.

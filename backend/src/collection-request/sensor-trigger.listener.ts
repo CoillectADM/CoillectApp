@@ -11,6 +11,7 @@ import { CollectionRequestService } from './collection-request.service';
 import { evaluateCollectionTrigger } from './collection-trigger.rule';
 import { condominiumOf, thresholdOf } from '../sensor/sensor-links';
 import { Barrel } from '../sensor/entities/barrel.entity';
+import { barrelKey, barrelLock } from './barrel-lock';
 
 /**
  * LISTENER do sensor: escuta cada leitura recebida pela API e, quando a regra
@@ -33,12 +34,28 @@ export class SensorTriggerListener implements OnModuleInit {
     );
   }
 
-  async handle({
+  /**
+   * Leituras do MESMO barril são avaliadas uma por vez (barrelLock): com vários
+   * clientes enviando ao mesmo tempo, só a primeira leitura no limite cria a
+   * solicitação; as outras já a encontram aberta.
+   */
+  async handle(event: SensorReadingReceivedEvent): Promise<CollectionTriggerResult> {
+    const barrelId = event.sensor.barrel?.id;
+    if (barrelId == null) return this.evaluate(event);
+    return barrelLock.run(barrelKey(barrelId), () => this.evaluate(event));
+  }
+
+  private async evaluate({
     sensor,
     reading,
   }: SensorReadingReceivedEvent): Promise<CollectionTriggerResult> {
     const barrel = sensor.barrel ?? null;
     const threshold = thresholdOf(sensor);
+    if (barrel) {
+      // Relê a marca dentro da trava: outra leitura pode tê-la mudado agora há pouco.
+      const fresh = await this.barrels.findOne({ where: { id: barrel.id } });
+      if (fresh) barrel.awaitingEmptyReading = fresh.awaitingEmptyReading;
+    }
     // Leitura abaixo do limite depois de uma coleta: o barril foi esvaziado de fato.
     if (barrel?.awaitingEmptyReading && reading.level < threshold) {
       await this.barrels.update(barrel.id, { awaitingEmptyReading: false });
