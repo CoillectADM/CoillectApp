@@ -120,7 +120,10 @@ export class DemoSeedService implements OnApplicationBootstrap {
           }),
         );
       } else if (options.resetLevels) {
-        await this.barrels.update(barrel.id, { lastCollectionAt: null });
+        await this.barrels.update(barrel.id, {
+          lastCollectionAt: null,
+          awaitingEmptyReading: false,
+        });
       }
 
       const sensor = await this.sensors.findOne({

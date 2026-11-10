@@ -44,6 +44,29 @@ describe('evaluateCollectionTrigger (regra de disparo da coleta)', () => {
     ).toEqual({ create: false, reason: 'BELOW_THRESHOLD' });
   });
 
+  it('depois de uma coleta, espera o sensor ler o barril vazio', () => {
+    expect(
+      evaluateCollectionTrigger({ ...base, level: 90, awaitingEmptyReading: true }),
+    ).toEqual({ create: false, reason: 'AWAITING_EMPTY_READING' });
+  });
+
+  it('leitura abaixo do limite após a coleta é só registrada', () => {
+    expect(
+      evaluateCollectionTrigger({ ...base, level: 5, awaitingEmptyReading: true }),
+    ).toEqual({ create: false, reason: 'BELOW_THRESHOLD' });
+  });
+
+  it('solicitação aberta tem prioridade sobre a espera do barril vazio', () => {
+    expect(
+      evaluateCollectionTrigger({
+        ...base,
+        level: 90,
+        hasOpenRequest: true,
+        awaitingEmptyReading: true,
+      }),
+    ).toEqual({ create: false, reason: 'REQUEST_ALREADY_OPEN' });
+  });
+
   it('não cria sem empresa coletora vinculada', () => {
     expect(
       evaluateCollectionTrigger({ ...base, level: 90, hasCompany: false }),

@@ -18,6 +18,8 @@ Atualizado com o alinhamento aos diagramas de classes (ver [diagramas.md](diagra
 | Notificações do síndico e da empresa | FALTANTE → criado | `src/notification/*` (`notificarSindico`, `notificarEmpresa`), vinculadas à mesma solicitação |
 | Rotas do desktop administrativo (cadastros de síndico, empresa, condomínio, barril e sensor) e dados de demonstração | FALTANTE → criado | `src/admin/*`, `src/demo/*` (nomes dos mockups) |
 | Health check e CI do backend | FALTANTE → criado | `GET health`, `.github/workflows/backend.yml` |
+| Firmware do ESP32 (Diagrama 1), ESP32 virtual no Wokwi e sensor virtual no PC | FALTANTE → criado | `sensor-esp32/` (mesmo firmware no Wokwi e na placa; simulador com painel no PC); CI em `.github/workflows/sensor-esp32.yml` |
+| Coleta repetida logo após a conclusão (sensor ainda lendo o barril cheio) | AJUSTAR | Barril guarda `awaitingEmptyReading`; o listener só abre outra solicitação depois de uma leitura abaixo do limite (`AWAITING_EMPTY_READING`) |
 | Fluxo antigo de pedido manual pelo usuário (`POST collection-request`, `:id/cancel`, `:id/complete`) | LEGADO | Mantido para o frontend web; cancelar/concluir só vale para pedidos `MANUAL` abertos (403 nas coletas do sensor ou da empresa); os novos apps não usam |
 | Testes `*.spec.ts` antigos (vários não compilam ou chamam métodos inexistentes; um arquivo vazio) | LEGADO | Não alterados; o CI roda `npm run test:mvp` e `npm run test:e2e:mvp` |
 | `frontend/` (web) | Fora deste PR | Não alterado |

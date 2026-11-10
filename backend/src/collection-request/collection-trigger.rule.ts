@@ -11,6 +11,11 @@ export interface CollectionTriggerInput {
   hasOpenRequest: boolean;
   /** O condomínio do barril tem empresa coletora vinculada? */
   hasCompany: boolean;
+  /**
+   * Houve coleta concluída e o sensor ainda não leu o barril abaixo do limite?
+   * (padrão: false)
+   */
+  awaitingEmptyReading?: boolean;
 }
 
 export interface CollectionTriggerDecision {
@@ -22,6 +27,8 @@ export interface CollectionTriggerDecision {
  * Regra de disparo da coleta (única para sensor físico e virtual):
  * cria UMA solicitação por barril quando o nível atinge o limite
  * (`FillLevelCalculator.atingiuLimite` do diagrama) e não há outra aberta.
+ * Depois de uma coleta concluída, só volta a disparar quando o sensor já leu
+ * o barril abaixo do limite (o barril foi esvaziado de fato).
  */
 export function evaluateCollectionTrigger(
   input: CollectionTriggerInput,
@@ -34,6 +41,9 @@ export function evaluateCollectionTrigger(
   }
   if (input.hasOpenRequest) {
     return { create: false, reason: 'REQUEST_ALREADY_OPEN' };
+  }
+  if (input.awaitingEmptyReading) {
+    return { create: false, reason: 'AWAITING_EMPTY_READING' };
   }
   if (!input.hasCompany) {
     return { create: false, reason: 'NO_COMPANY_LINKED' };

@@ -130,6 +130,7 @@ export class SensorService implements OnModuleInit {
     if (!barrelId) return;
     await this.barrels.update(barrelId, {
       lastCollectionAt: request.completedAt ?? new Date(),
+      awaitingEmptyReading: true,
     });
     const installed = await this.sensors.find({
       where: { barrel: { id: barrelId } },

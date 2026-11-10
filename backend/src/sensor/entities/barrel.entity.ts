@@ -46,6 +46,14 @@ export class Barrel {
   @Column({ type: 'timestamptz', nullable: true })
   lastCollectionAt: Date | null;
 
+  /**
+   * true depois de uma coleta concluída, até o sensor ler o barril ABAIXO do limite.
+   * Enquanto isso, leituras no limite não abrem outra solicitação: o sensor ainda
+   * não "viu" o barril vazio (ex.: no Wokwi o barril simulado continua cheio).
+   */
+  @Column({ type: 'boolean', default: false })
+  awaitingEmptyReading: boolean;
+
   @OneToMany(() => Sensor, (sensor) => sensor.barrel)
   sensors: Sensor[];
 

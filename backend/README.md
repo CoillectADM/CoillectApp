@@ -58,9 +58,15 @@ Para repetir a apresentação do zero: `POST /api/admin/demo/reset`.
 ## Simular o sensor agora
 
 ```bash
+# na raiz do repositório: sensor virtual com painel em http://localhost:4010 (Node 18+, sem instalar nada)
+node sensor-esp32/simulador-pc/sensor-virtual.mjs --api http://localhost:3000/api
+
+# ou uma leitura avulsa
 curl -X POST http://localhost:3000/api/sensor-alert \
   -H "Content-Type: application/json" -d '{"sensorId":"CLT-8472-A","percentual":86}'
 ```
+
+O ESP32 virtual (Wokwi) e o ESP32 físico estão em [`sensor-esp32/`](../sensor-esp32/README.md).
 
 ## Testes
 
@@ -74,7 +80,8 @@ O GitHub Actions roda os três a cada push em `backend/`.
 
 ## Documentação
 
-- [Contrato do sensor](../docs/contrato-sensor.md): payload, respostas, regra de disparo, exemplo ESP32
+- [Contrato do sensor](../docs/contrato-sensor.md): payload, respostas, regra de disparo
+- [Sensor ESP32 físico e virtual](../sensor-esp32/README.md): firmware, Wokwi e sensor virtual no PC
 - [API para os três apps](../docs/api-apps.md): rotas por app, formatos e o que falta nos apps
 - [Publicar na cloud](../docs/deploy-cloud.md): variáveis de ambiente, Render e outros provedores
 - [Estado atual do backend](../docs/estado-atual.md): o que foi reutilizado, ajustado e criado

@@ -30,7 +30,7 @@ O arquivo `render.yaml` na raiz cria a API e um PostgreSQL.
 5. Rode o roteiro de verificação na sua máquina (Node 18+):
    `node backend/scripts/smoke-flow.mjs https://<seu-servico>.onrender.com/api --reset`
 6. Nos três apps, no campo **Servidor da API**, use `https://<seu-servico>.onrender.com/api/`.
-7. No firmware/simulador do sensor, use `https://<seu-servico>.onrender.com/api/sensor-alert`.
+7. No firmware do ESP32 (físico ou no Wokwi), use `https://<seu-servico>.onrender.com/api/sensor-alert`; no sensor virtual do PC, `--api https://<seu-servico>.onrender.com/api`. Ver [sensor-esp32/README.md](../sensor-esp32/README.md).
 
 Limites do plano gratuito do Render:
 
