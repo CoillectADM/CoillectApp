@@ -257,8 +257,12 @@ uma vez, documentando o tempo gasto.
 
 **Já implementado no código (vale para qualquer escala):**
 
-- **API sem estado**: tudo fica no PostgreSQL e no Storage, então dá para rodar 2+ instâncias
-  atrás do balanceador do App Service sem mudar nada.
+- **Dados fora da API**: tudo fica no PostgreSQL e no Storage, então dá para rodar 2+ instâncias
+  atrás do balanceador do App Service. Limite conhecido: a trava que garante uma solicitação
+  aberta por barril (`barrel-lock.ts`), a pausa da fila e os contadores da aba Nuvem ficam na
+  memória de cada instância. Com 2+ instâncias, duas leituras simultâneas do mesmo barril em
+  instâncias diferentes ainda poderiam abrir duas solicitações (a garantia teria de vir de um
+  índice único no banco). O MVP roda com 1 instância.
 - **Health check** `GET /api/health` → **503** quando o banco cai: o App Service tira a instância
   doente do balanceador e a substitui se continuar doente.
 - **Fila com consumidores concorrentes**: com várias instâncias, cada mensagem é processada por

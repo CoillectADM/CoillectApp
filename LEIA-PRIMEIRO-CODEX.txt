@@ -84,6 +84,8 @@ Cada repositório tem README.md (como rodar) e AGENTS.md (regras para agentes de
   7. docs/diagramas.md ............ onde cada classe dos diagramas está no código
   8. docs/estado-atual.md ......... o que foi reaproveitado, ajustado e criado no backend
   9. README.md de cada app ........ telas, rotas usadas, como rodar e testar
+ 10. documentação/README.md ....... referência detalhada: arquitetura, todas as rotas, sensor,
+                                    apps, Azure, bibliotecas, testes, fluxos e histórico
 
 Código principal da API (backend/src/):
   sensor/sensor-alert.service.ts ............... recebe a leitura (SensorAlertService)
@@ -340,8 +342,9 @@ Código principal da API (backend/src/):
 
 7.2 Passo a passo
   1. Mostre a arquitetura (desenho da seção 4.1 ou docs/azure-a02.md §1).
-  2. Desktop → Cadastros: condomínio Residencial Aurora ligado ao síndico Leonardo e à empresa
-     EcoColeta; barril BRL-8472 com o sensor CLT-8472-A.
+  2. Desktop → Cadastros: mostre o que já vem nos dados de demonstração (condomínio Residencial
+     Aurora ligado ao síndico Leonardo e à empresa EcoColeta; barril BRL-8472 com o sensor
+     CLT-8472-A). Para cadastrar algo ao vivo, use nomes novos: barril ou sensor repetido dá 409.
   3. Suba o nível do sensor CLT-8472-A: 40% → 60% (desktop → "Leituras do sensor" mostra cada
      envio; app do síndico mostra o barril enchendo; "Operação normal").
   4. Chegue a 80% ou mais (ex.: 86%; no app do síndico, 4 ou 5 bolinhas): a API abre a

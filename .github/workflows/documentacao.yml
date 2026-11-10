@@ -1,0 +1,57 @@
+name: Documentação
+
+# Confere a pasta documentação/: links internos, âncoras e diagramas Mermaid
+# (os mesmos que o GitHub desenha na página). Só roda quando a documentação muda.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "documenta*/**"
+      - ".github/scripts/verificar_documentacao.py"
+      - ".github/workflows/documentacao.yml"
+  pull_request:
+    paths:
+      - "documenta*/**"
+      - ".github/scripts/verificar_documentacao.py"
+      - ".github/workflows/documentacao.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Links e diagramas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Links internos e âncoras
+        run: python3 .github/scripts/verificar_documentacao.py --mermaid-dir "$RUNNER_TEMP/mermaid"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Diagramas Mermaid (mermaid-cli)
+        run: |
+          echo '{"args":["--no-sandbox"]}' > "$RUNNER_TEMP/puppeteer.json"
+          npm install --no-save --prefix "$RUNNER_TEMP/mmdc" @mermaid-js/mermaid-cli@11
+          MMDC="$RUNNER_TEMP/mmdc/node_modules/.bin/mmdc"
+          falhas=0
+          total=0
+          for arquivo in "$RUNNER_TEMP"/mermaid/*.mmd; do
+            total=$((total + 1))
+            origem=$(cat "${arquivo%.mmd}.origem")
+            if ! saida=$("$MMDC" -q -p "$RUNNER_TEMP/puppeteer.json" -i "$arquivo" -o "${arquivo%.mmd}.svg" 2>&1); then
+              falhas=$((falhas + 1))
+              arq=${origem%%:*}
+              linha=${origem##*:}
+              mensagem=$(printf '%s' "$saida" | grep -m1 -iE 'error|expecting' || printf '%s' "$saida" | tail -n 1)
+              echo "::error file=$arq,line=$linha::Mermaid inválido: $mensagem"
+              printf '%s\n' "$saida"
+            fi
+          done
+          echo "::notice title=Documentação::$total diagrama(s) Mermaid desenhado(s) pelo mermaid-cli, $falhas com erro."
+          test "$falhas" -eq 0
