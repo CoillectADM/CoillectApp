@@ -1,10 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { CollectionRequest } from '../collection-request/collection-request.entity';
 import { Notification, NotificationType } from './notification.entity';
 import { NotificationView, toNotificationView } from './notification.view';
+import {
+  empresaNotificationText,
+  sindicoNotificationText,
+} from './notification.text';
 
+/** Destinatário: síndico (userId) ou empresa coletora (companyId). */
+export type NotificationRecipient = { userId: number } | { companyId: number };
+
+/**
+ * `NotificationService` do diagrama da API:
+ *  - notificarSindico: cópia informativa da solicitação (o síndico só acompanha);
+ *  - notificarEmpresa: aviso de nova solicitação para a empresa coletora.
+ */
 @Injectable()
 export class NotificationService {
   constructor(
@@ -12,16 +24,17 @@ export class NotificationService {
     private readonly notifications: Repository<Notification>,
   ) {}
 
-  /** Cria a cópia/notificação para o síndico da solicitação (se houver síndico). */
-  async notifySindico(
+  async notificarSindico(
     request: CollectionRequest,
     type: NotificationType,
   ): Promise<Notification | null> {
     if (!request.user) return null;
-    const { title, message } = buildNotificationText(request, type);
+    const { title, message } = sindicoNotificationText(request, type);
     return this.notifications.save(
       this.notifications.create({
+        audience: 'SINDICO',
         user: { id: request.user.id },
+        company: null,
         collectionRequest: { id: request.id },
         type,
         title,
@@ -31,13 +44,33 @@ export class NotificationService {
     );
   }
 
-  async listForUser(
-    userId: number,
+  async notificarEmpresa(
+    request: CollectionRequest,
+    type: NotificationType,
+  ): Promise<Notification | null> {
+    if (!request.company) return null;
+    const { title, message } = empresaNotificationText(request, type);
+    return this.notifications.save(
+      this.notifications.create({
+        audience: 'EMPRESA',
+        user: null,
+        company: { id: request.company.id },
+        collectionRequest: { id: request.id },
+        type,
+        title,
+        message,
+        read: false,
+      }),
+    );
+  }
+
+  async list(
+    recipient: NotificationRecipient,
     options: { unreadOnly?: boolean; limit?: number } = {},
   ): Promise<NotificationView[]> {
     const list = await this.notifications.find({
       where: {
-        user: { id: userId },
+        ...whereRecipient(recipient),
         ...(options.unreadOnly ? { read: false } : {}),
       },
       order: { createdAt: 'DESC', id: 'DESC' },
@@ -46,9 +79,12 @@ export class NotificationService {
     return list.map(toNotificationView);
   }
 
-  async markRead(id: number, userId: number): Promise<NotificationView> {
+  async markRead(
+    id: number,
+    recipient: NotificationRecipient,
+  ): Promise<NotificationView> {
     const notification = await this.notifications.findOne({
-      where: { id, user: { id: userId } },
+      where: { id, ...whereRecipient(recipient) },
     });
     if (!notification) {
       throw new NotFoundException('Notificação não encontrada');
@@ -60,9 +96,11 @@ export class NotificationService {
     return toNotificationView(notification);
   }
 
-  async markAllRead(userId: number): Promise<{ updated: number }> {
+  async markAllRead(
+    recipient: NotificationRecipient,
+  ): Promise<{ updated: number }> {
     const unread = await this.notifications.find({
-      where: { user: { id: userId }, read: false },
+      where: { ...whereRecipient(recipient), read: false },
       select: { id: true },
     });
     if (!unread.length) return { updated: 0 };
@@ -74,42 +112,10 @@ export class NotificationService {
   }
 }
 
-function buildNotificationText(
-  request: CollectionRequest,
-  type: NotificationType,
-): { title: string; message: string } {
-  const condominium = request.sensor?.condominium?.name ?? 'seu condomínio';
-  const company = request.company?.name ?? 'a empresa coletora';
-  const level = request.levelAtRequest ?? request.sensor?.level;
-  switch (type) {
-    case 'COLLECTION_REQUESTED':
-      return {
-        title: 'Solicitação de coleta gerada',
-        message:
-          level !== undefined && level !== null
-            ? `O barril de ${condominium} atingiu ${level}%. A solicitação #${request.id} foi enviada para ${company}.`
-            : `A solicitação #${request.id} foi enviada para ${company}.`,
-      };
-    case 'COLLECTION_SCHEDULED':
-      return {
-        title: 'Coleta iniciada',
-        message: `${company} iniciou a etapa de coleta da solicitação #${request.id}.`,
-      };
-    case 'COLLECTION_COMPLETED':
-      return {
-        title: 'Coleta concluída',
-        message: `${company} concluiu a coleta da solicitação #${request.id}. O barril está disponível novamente.`,
-      };
-    case 'COLLECTION_REFUSED':
-      return {
-        title: 'Solicitação recusada',
-        message: `${company} recusou a solicitação #${request.id}.`,
-      };
-    case 'COLLECTION_CANCELLED':
-    default:
-      return {
-        title: 'Solicitação cancelada',
-        message: `A solicitação #${request.id} foi cancelada.`,
-      };
-  }
+function whereRecipient(
+  recipient: NotificationRecipient,
+): FindOptionsWhere<Notification> {
+  return 'userId' in recipient
+    ? { audience: 'SINDICO', user: { id: recipient.userId } }
+    : { audience: 'EMPRESA', company: { id: recipient.companyId } };
 }

@@ -20,6 +20,11 @@ export class SensorReading {
   @Column({ type: 'int' })
   level: number;
 
+  /** `dataHora` enviada pelo dispositivo, guardada como veio (opcional). */
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  deviceTimestamp: string | null;
+
+  /** Momento em que a API recebeu a leitura (referência oficial). */
   @CreateDateColumn({ type: 'timestamptz' })
   receivedAt: Date;
 }

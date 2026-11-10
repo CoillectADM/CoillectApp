@@ -3,6 +3,7 @@ import {
   CollectionRequestOrigin,
   CollectionRequestStatus,
 } from './collection-request.entity';
+import { DEFAULT_ALERT_THRESHOLD } from '../sensor/entities/barrel.entity';
 
 /**
  * Formato devolvido aos apps. Usa só os campos necessários
@@ -18,6 +19,14 @@ export interface CollectionRequestView {
   completedAt: Date | null;
   updatedAt: Date | null;
   condominiumName: string | null;
+  condominiumNeighborhood: string | null;
+  /** Barril específico que a empresa deve coletar. */
+  barrel: {
+    id: number;
+    code: string;
+    capacityLiters: number | null;
+    threshold: number;
+  } | null;
   sensor: {
     id: number;
     sensorId: string;
@@ -36,7 +45,9 @@ export interface CollectionRequestView {
 
 export function toRequestView(request: CollectionRequest): CollectionRequestView {
   const sensor = request.sensor ?? null;
-  const condominium = sensor?.condominium ?? null;
+  const barrel = request.barrel ?? sensor?.barrel ?? null;
+  const condominium = barrel?.condominium ?? null;
+  const threshold = barrel?.alertThreshold ?? DEFAULT_ALERT_THRESHOLD;
   return {
     id: request.id,
     status: request.status,
@@ -47,6 +58,15 @@ export function toRequestView(request: CollectionRequest): CollectionRequestView
     completedAt: request.completedAt ?? null,
     updatedAt: request.updatedAt ?? null,
     condominiumName: condominium?.name ?? null,
+    condominiumNeighborhood: condominium?.neighborhood ?? null,
+    barrel: barrel
+      ? {
+          id: barrel.id,
+          code: barrel.code,
+          capacityLiters: barrel.capacityLiters ?? null,
+          threshold,
+        }
+      : null,
     sensor: sensor
       ? {
           id: sensor.id,
@@ -54,7 +74,7 @@ export function toRequestView(request: CollectionRequest): CollectionRequestView
           condominiumId: condominium?.id ?? null,
           condominiumName: condominium?.name ?? null,
           level: sensor.level,
-          threshold: sensor.threshold,
+          threshold,
         }
       : null,
     user: request.user

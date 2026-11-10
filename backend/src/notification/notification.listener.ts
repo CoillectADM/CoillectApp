@@ -18,8 +18,10 @@ const TYPE_BY_STATUS: Partial<Record<string, NotificationType>> = {
 };
 
 /**
- * Gera a cópia/notificação do síndico sempre que a solicitação é criada ou muda
- * de status. Falhas aqui não desfazem a solicitação principal da empresa.
+ * Gera as notificações sempre que a solicitação é criada ou muda de status:
+ *  - síndico: cópia informativa de tudo o que acontece com a coleta;
+ *  - empresa: aviso de nova solicitação (sensor ou fluxo antigo) e de cancelamento.
+ * Falhas aqui não desfazem a solicitação principal da empresa.
  */
 @Injectable()
 export class NotificationListener implements OnModuleInit {
@@ -33,26 +35,53 @@ export class NotificationListener implements OnModuleInit {
   onModuleInit(): void {
     this.events.on<CollectionRequestCreatedEvent>(
       COLLECTION_REQUEST_CREATED,
-      ({ request }) => this.notify(request, 'COLLECTION_REQUESTED'),
+      ({ request }) => this.onCreated(request),
     );
     this.events.on<CollectionRequestStatusChangedEvent>(
       COLLECTION_REQUEST_STATUS_CHANGED,
-      ({ request }) => {
-        const type = TYPE_BY_STATUS[request.status];
-        return type ? this.notify(request, type) : undefined;
-      },
+      ({ request }) => this.onStatusChanged(request),
     );
   }
 
-  private async notify(
+  private async onCreated(request: CollectionRequest): Promise<void> {
+    if (request.origin === 'COMPANY') {
+      // A própria empresa agendou: só o síndico precisa saber.
+      await this.safely(request, 'síndico', () =>
+        this.notifications.notificarSindico(request, 'COLLECTION_SCHEDULED'),
+      );
+      return;
+    }
+    await this.safely(request, 'síndico', () =>
+      this.notifications.notificarSindico(request, 'COLLECTION_REQUESTED'),
+    );
+    await this.safely(request, 'empresa', () =>
+      this.notifications.notificarEmpresa(request, 'COLLECTION_REQUESTED'),
+    );
+  }
+
+  private async onStatusChanged(request: CollectionRequest): Promise<void> {
+    const type = TYPE_BY_STATUS[request.status];
+    if (!type) return;
+    await this.safely(request, 'síndico', () =>
+      this.notifications.notificarSindico(request, type),
+    );
+    if (request.status === 'CANCELLED') {
+      await this.safely(request, 'empresa', () =>
+        this.notifications.notificarEmpresa(request, type),
+      );
+    }
+  }
+
+  private async safely(
     request: CollectionRequest,
-    type: NotificationType,
+    who: string,
+    work: () => Promise<unknown>,
   ): Promise<void> {
     try {
-      await this.notifications.notifySindico(request, type);
+      await work();
     } catch (error) {
       this.logger.error(
-        `Falha ao notificar o síndico da solicitação #${request.id}: ${error}`,
+        `Falha ao notificar ${who} da solicitação #${request.id}: ${error}`,
       );
     }
   }

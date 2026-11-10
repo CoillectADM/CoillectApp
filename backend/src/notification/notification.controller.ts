@@ -37,7 +37,7 @@ export class NotificationController {
     @Query('unread') unread?: string,
     @Query('limit') limit?: string,
   ): Promise<APIResponse> {
-    const list = await this.notificationService.listForUser(req.user.sub, {
+    const list = await this.notificationService.list({ userId: req.user.sub }, {
       unreadOnly: unread === 'true' || unread === '1',
       limit: limit ? Number(limit) || undefined : undefined,
     });
@@ -52,7 +52,9 @@ export class NotificationController {
   @Post('read-all')
   @ApiOperation({ summary: 'Síndico: marca todas as notificações como lidas' })
   async readAll(@Req() req: any): Promise<APIResponse> {
-    const result = await this.notificationService.markAllRead(req.user.sub);
+    const result = await this.notificationService.markAllRead({
+      userId: req.user.sub,
+    });
     return new APIResponse()
       .setData(result)
       .setError(false)
@@ -67,10 +69,9 @@ export class NotificationController {
     @Req() req: any,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<APIResponse> {
-    const notification = await this.notificationService.markRead(
-      id,
-      req.user.sub,
-    );
+    const notification = await this.notificationService.markRead(id, {
+      userId: req.user.sub,
+    });
     return new APIResponse()
       .setData(notification)
       .setError(false)

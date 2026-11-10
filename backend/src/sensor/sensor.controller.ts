@@ -19,38 +19,37 @@ import { APIResponse } from '../utils/response/response';
 import { JwtUserAuthGuard } from '../auth/guards/jwt-user.guard';
 import { JwtCompanyAuthGuard } from '../auth/guards/jwt-company.guard';
 import { SensorService } from './sensor.service';
-import { SensorReadingDto } from './dto/sensor-reading.dto';
+import { SensorAlertService } from './sensor-alert.service';
+import { SensorAlertPayload } from './dto/sensor-alert.payload';
+import { toAlertResponse } from './sensor-alert.controller';
 
 @ApiTags('sensor')
 @Controller('sensor')
 export class SensorController {
-  constructor(private readonly sensorService: SensorService) {}
+  constructor(
+    private readonly sensorService: SensorService,
+    private readonly sensorAlertService: SensorAlertService,
+  ) {}
 
   /**
-   * Endpoint chamado pelo SENSOR (físico ou virtual). Sem login: o dispositivo
-   * só precisa conhecer a URL da API e o próprio sensorId.
+   * Mesmo listener de POST /api/sensor-alert, mantido com o nome antigo.
+   * Aceita { sensorId, percentual, dataHora } e também o formato antigo { sensorId, level }.
    */
   @Post('readings')
   @HttpCode(201)
   @ApiOperation({
     summary:
-      'Sensor: envia a leitura do nível do barril. Ao atingir o limite, a API cria a solicitação de coleta',
+      'Sensor: mesmo que POST /api/sensor-alert (rota mantida por compatibilidade)',
   })
   @ApiResponse({ status: 201, description: 'Leitura registrada' })
   @ApiResponse({ status: 400, description: 'Payload inválido' })
   @ApiResponse({ status: 404, description: 'sensorId não cadastrado' })
-  async receiveReading(@Body() dto: SensorReadingDto): Promise<APIResponse> {
-    const result = await this.sensorService.registerReading(dto);
-    const message = result.collection.triggered
-      ? `Leitura registrada. Solicitação de coleta #${result.collection.request?.id} criada.`
-      : 'Leitura registrada.';
-    return new APIResponse()
-      .setData(result)
-      .setError(false)
-      .setStatusCode(201)
-      .setRequester(`sensor:${result.reading.sensorId}`)
-      .setMessage(message)
-      .build();
+  async receiveReading(
+    @Body() payload: SensorAlertPayload,
+  ): Promise<APIResponse> {
+    return toAlertResponse(
+      await this.sensorAlertService.processarAlerta(payload),
+    );
   }
 
   @UseGuards(JwtUserAuthGuard)
@@ -88,7 +87,7 @@ export class SensorController {
   /** Estado atual de um sensor; útil para o sensor virtual e para testes. */
   @Get(':sensorId/status')
   @ApiOperation({ summary: 'Estado atual de um sensor (nível, limite, coleta aberta)' })
-  @ApiParam({ name: 'sensorId', example: 'COI-DEMO-01' })
+  @ApiParam({ name: 'sensorId', example: 'CLT-8472-A' })
   async status(@Param('sensorId') sensorId: string): Promise<APIResponse> {
     const sensor = await this.sensorService.findViewByCode(sensorId);
     return new APIResponse()

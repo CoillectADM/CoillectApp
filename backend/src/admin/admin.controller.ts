@@ -13,7 +13,13 @@ import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { APIResponse } from '../utils/response/response';
 import { AdminService } from './admin.service';
 import { CreateCondominiumDto, UpdateCondominiumDto } from './dto/condominium.dto';
-import { CreateSensorDto, UpdateSensorDto } from './dto/sensor-admin.dto';
+import {
+  CreateBarrelDto,
+  CreateSensorDto,
+  UpdateBarrelDto,
+  UpdateSensorDto,
+} from './dto/sensor-admin.dto';
+import { AdminCreateCompanyDto, CreateSindicoDto } from './dto/people.dto';
 
 function ok(data: unknown, message: string, statusCode = 200): APIResponse {
   return new APIResponse()
@@ -43,7 +49,7 @@ export class AdminController {
   }
 
   @Get('condominiums')
-  @ApiOperation({ summary: 'Desktop: lista condomínios com síndico, empresa e sensores' })
+  @ApiOperation({ summary: 'Desktop: lista condomínios com síndico, empresa, barris e sensores' })
   async condominiums(): Promise<APIResponse> {
     return ok(await this.adminService.listCondominiums(), 'Condomínios');
   }
@@ -70,22 +76,46 @@ export class AdminController {
     );
   }
 
+  @Get('barrels')
+  @ApiOperation({ summary: 'Desktop: lista barris com condomínio e sensor instalado' })
+  async barrels(): Promise<APIResponse> {
+    return ok(await this.adminService.listBarrels(), 'Barris');
+  }
+
+  @Post('barrels')
+  @ApiOperation({ summary: 'Desktop: cadastra um barril e vincula ao condomínio' })
+  async createBarrel(@Body() dto: CreateBarrelDto): Promise<APIResponse> {
+    return ok(await this.adminService.createBarrel(dto), 'Barril cadastrado', 201);
+  }
+
+  @Patch('barrels/:id')
+  @ApiOperation({ summary: 'Desktop: altera condomínio, capacidade ou limite do barril' })
+  async updateBarrel(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateBarrelDto,
+  ): Promise<APIResponse> {
+    return ok(await this.adminService.updateBarrel(id, dto), 'Barril atualizado');
+  }
+
   @Get('sensors')
-  @ApiOperation({ summary: 'Desktop: lista sensores/barris' })
+  @ApiOperation({ summary: 'Desktop: lista sensores com barril, condomínio e nível' })
   async sensors(): Promise<APIResponse> {
     return ok(await this.adminService.listSensors(), 'Sensores');
   }
 
   @Post('sensors')
   @ApiOperation({
-    summary: 'Desktop: cadastra um sensor (ex.: o ESP32 físico) e vincula ao condomínio',
+    summary:
+      'Desktop: cadastra um sensor (ex.: o ESP32 físico) e instala no barril (barrelId)',
   })
   async createSensor(@Body() dto: CreateSensorDto): Promise<APIResponse> {
     return ok(await this.adminService.createSensor(dto), 'Sensor cadastrado', 201);
   }
 
   @Patch('sensors/:sensorId')
-  @ApiOperation({ summary: 'Desktop: altera limite, capacidade ou condomínio do sensor' })
+  @ApiOperation({
+    summary: 'Desktop: troca o barril do sensor ou altera limite/capacidade do barril',
+  })
   async updateSensor(
     @Param('sensorId') sensorId: string,
     @Body() dto: UpdateSensorDto,
@@ -98,7 +128,7 @@ export class AdminController {
 
   @Get('readings')
   @ApiOperation({ summary: 'Desktop: últimas leituras recebidas dos sensores' })
-  @ApiQuery({ name: 'sensorId', required: false, example: 'COI-DEMO-01' })
+  @ApiQuery({ name: 'sensorId', required: false, example: 'CLT-8472-A' })
   @ApiQuery({ name: 'limit', required: false, example: 50 })
   async readings(
     @Query('sensorId') sensorId?: string,
@@ -113,10 +143,24 @@ export class AdminController {
     );
   }
 
+  @Get('sindicos')
+  @ApiOperation({ summary: 'Desktop: síndicos para vincular a condomínios' })
+  async sindicos(): Promise<APIResponse> {
+    return ok(await this.adminService.listSindicos(), 'Síndicos');
+  }
+
+  @Post('sindicos')
+  @ApiOperation({
+    summary: 'Desktop: cadastra um síndico (login no app do síndico com e-mail e senha)',
+  })
+  async createSindico(@Body() dto: CreateSindicoDto): Promise<APIResponse> {
+    return ok(await this.adminService.createSindico(dto), 'Síndico cadastrado', 201);
+  }
+
   @Get('users')
-  @ApiOperation({ summary: 'Desktop: usuários (síndicos) para vincular a condomínios' })
+  @ApiOperation({ summary: 'Desktop: mesmo que GET /api/admin/sindicos (nome antigo)' })
   async users(): Promise<APIResponse> {
-    return ok(await this.adminService.listUsers(), 'Usuários');
+    return ok(await this.adminService.listSindicos(), 'Usuários');
   }
 
   @Get('companies')
@@ -125,11 +169,19 @@ export class AdminController {
     return ok(await this.adminService.listCompanies(), 'Empresas');
   }
 
+  @Post('companies')
+  @ApiOperation({
+    summary: 'Desktop: cadastra uma empresa coletora (login no app da empresa)',
+  })
+  async createCompany(@Body() dto: AdminCreateCompanyDto): Promise<APIResponse> {
+    return ok(await this.adminService.createCompany(dto), 'Empresa cadastrada', 201);
+  }
+
   @Post('demo/reset')
   @HttpCode(200)
   @ApiOperation({
     summary:
-      'Desktop: reinicia a demonstração (apaga solicitações, notificações e leituras; barris voltam ao início)',
+      'Desktop: reinicia a demonstração (apaga solicitações, notificações e leituras; barris voltam ao nível inicial)',
   })
   async resetDemo(): Promise<APIResponse> {
     return ok(await this.adminService.resetDemo(), 'Demonstração reiniciada');

@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Sensor } from './entities/sensor.entity';
-import { SensorReading } from './entities/sensor-reading.entity';
+import { Barrel } from './entities/barrel.entity';
 import {
   CollectionRequest,
   OPEN_REQUEST_STATUSES,
@@ -16,45 +16,22 @@ import { DomainEventsService } from '../events/domain-events.service';
 import {
   COLLECTION_REQUEST_STATUS_CHANGED,
   CollectionRequestStatusChangedEvent,
-  CollectionTriggerReason,
-  isCollectionTriggerResult,
-  SENSOR_READING_RECEIVED,
-  SensorReadingReceivedEvent,
 } from '../events/domain-events';
-import { SensorReadingDto } from './dto/sensor-reading.dto';
 import { SensorView, toSensorView } from './sensor.view';
-import {
-  CollectionRequestView,
-  toRequestView,
-} from '../collection-request/collection-request.view';
+import { SENSOR_RELATIONS } from './sensor-links';
 
-/** Relações necessárias para montar a visão do sensor e disparar a coleta. */
-export const SENSOR_RELATIONS = {
-  condominium: { company: true, sindico: true },
-} as const;
-
-export interface SensorReadingResult {
-  reading: { id: number; sensorId: string; level: number; receivedAt: Date };
-  sensor: SensorView;
-  collection: {
-    /** true quando ESTA leitura criou a solicitação de coleta. */
-    triggered: boolean;
-    reason: CollectionTriggerReason | null;
-    /** Solicitação criada agora ou a que já estava aberta para o sensor. */
-    request: CollectionRequestView | null;
-  };
-}
-
+/**
+ * Consultas de sensores/barris para os apps (papel do `SensorRepository` do
+ * diagrama) e atualização do barril quando a coleta é concluída.
+ * O recebimento da leitura do sensor fica no SensorAlertService.
+ */
 @Injectable()
 export class SensorService implements OnModuleInit {
   private readonly logger = new Logger(SensorService.name);
-  /** Fila por sensor: leituras simultâneas do mesmo sensor são tratadas uma de cada vez. */
-  private readonly queues = new Map<string, Promise<unknown>>();
 
   constructor(
     @InjectRepository(Sensor) private readonly sensors: Repository<Sensor>,
-    @InjectRepository(SensorReading)
-    private readonly readings: Repository<SensorReading>,
+    @InjectRepository(Barrel) private readonly barrels: Repository<Barrel>,
     @InjectRepository(CollectionRequest)
     private readonly requests: Repository<CollectionRequest>,
     private readonly events: DomainEventsService,
@@ -68,77 +45,40 @@ export class SensorService implements OnModuleInit {
     );
   }
 
-  /**
-   * Recebe a leitura do sensor (físico ou virtual), atualiza o barril, grava o
-   * histórico e publica o evento que o listener usa para decidir a coleta.
-   */
-  async registerReading(dto: SensorReadingDto): Promise<SensorReadingResult> {
-    const code = dto.sensorId.trim();
-    return this.enqueue(code, async () => {
-      const sensor = await this.sensors.findOne({
-        where: { code },
-        relations: SENSOR_RELATIONS,
-      });
-      if (!sensor) {
-        throw new NotFoundException(
-          `Sensor "${code}" não cadastrado. Cadastre-o em POST /api/admin/sensors.`,
-        );
-      }
-
-      const level = Math.round(dto.level);
-      const receivedAt = new Date();
-      await this.sensors.update(sensor.id, { level, lastReadingAt: receivedAt });
-      sensor.level = level;
-      sensor.lastReadingAt = receivedAt;
-
-      const reading = await this.readings.save(
-        this.readings.create({ sensor: { id: sensor.id } as Sensor, level }),
-      );
-
-      const results = await this.events.emit<SensorReadingReceivedEvent>(
-        SENSOR_READING_RECEIVED,
-        { sensor, reading },
-      );
-      const trigger = results.find(isCollectionTriggerResult) ?? null;
-      const request = trigger?.request ?? null;
-
-      return {
-        reading: {
-          id: reading.id,
-          sensorId: sensor.code,
-          level,
-          receivedAt: reading.receivedAt,
-        },
-        sensor: toSensorView(sensor, request),
-        collection: {
-          triggered: trigger?.triggered ?? false,
-          reason: trigger?.reason ?? null,
-          request: request ? toRequestView(request) : null,
-        },
-      };
+  /** `SensorRepository.buscarPorId(sensorId)`: sensor com barril, condomínio, síndico e empresa. */
+  async findByCode(code: string): Promise<Sensor> {
+    const sensor = await this.sensors.findOne({
+      where: { code },
+      relations: SENSOR_RELATIONS,
     });
+    if (!sensor) {
+      throw new NotFoundException(
+        `Sensor "${code}" não cadastrado. Cadastre-o em POST /api/admin/sensors.`,
+      );
+    }
+    return sensor;
   }
 
   /** Barril do condomínio do síndico logado (null se ainda não houver vínculo). */
   async findForSindico(userId: number): Promise<SensorView | null> {
     const sensor = await this.sensors.findOne({
-      where: { condominium: { sindico: { id: userId } } },
+      where: { barrel: { condominium: { sindico: { id: userId } } } },
       relations: SENSOR_RELATIONS,
       order: { id: 'ASC' },
     });
     if (!sensor) return null;
-    const [view] = await this.withOpenRequests([sensor]);
+    const [view] = await this.toViews([sensor]);
     return view;
   }
 
   /** Barris dos condomínios clientes da empresa logada. */
   async findForCompany(companyId: number): Promise<SensorView[]> {
     const list = await this.sensors.find({
-      where: { condominium: { company: { id: companyId } } },
+      where: { barrel: { condominium: { company: { id: companyId } } } },
       relations: SENSOR_RELATIONS,
       order: { code: 'ASC' },
     });
-    return this.withOpenRequests(list);
+    return this.toViews(list);
   }
 
   async findAllViews(): Promise<SensorView[]> {
@@ -146,34 +86,38 @@ export class SensorService implements OnModuleInit {
       relations: SENSOR_RELATIONS,
       order: { code: 'ASC' },
     });
-    return this.withOpenRequests(list);
+    return this.toViews(list);
   }
 
   async findViewByCode(code: string): Promise<SensorView> {
-    const sensor = await this.sensors.findOne({
-      where: { code },
-      relations: SENSOR_RELATIONS,
-    });
-    if (!sensor) {
-      throw new NotFoundException(`Sensor "${code}" não cadastrado.`);
-    }
-    const [view] = await this.withOpenRequests([sensor]);
+    const [view] = await this.toViews([await this.findByCode(code)]);
     return view;
   }
 
-  private async withOpenRequests(list: Sensor[]): Promise<SensorView[]> {
+  /** Monta as visões incluindo a solicitação aberta (PENDING/SCHEDULED) de cada barril. */
+  async toViews(list: Sensor[]): Promise<SensorView[]> {
     if (!list.length) return [];
-    const open = await this.requests.find({
-      where: {
-        sensor: { id: In(list.map((s) => s.id)) },
-        status: In(OPEN_REQUEST_STATUSES),
-      },
-      order: { requestedAt: 'DESC' },
-    });
+    const barrelIds = list
+      .map((sensor) => sensor.barrel?.id)
+      .filter((id): id is number => typeof id === 'number');
+    const open = barrelIds.length
+      ? await this.requests.find({
+          where: {
+            barrel: { id: In(barrelIds) },
+            status: In(OPEN_REQUEST_STATUSES),
+          },
+          order: { requestedAt: 'DESC' },
+        })
+      : [];
+    const now = new Date();
     return list.map((sensor) =>
       toSensorView(
         sensor,
-        open.find((request) => request.sensor?.id === sensor.id) ?? null,
+        open.find(
+          (request) =>
+            !!sensor.barrel && request.barrel?.id === sensor.barrel.id,
+        ) ?? null,
+        now,
       ),
     );
   }
@@ -181,24 +125,23 @@ export class SensorService implements OnModuleInit {
   private async onRequestStatusChanged({
     request,
   }: CollectionRequestStatusChangedEvent): Promise<void> {
-    if (request.status !== 'COMPLETED' || !request.sensor) return;
-    await this.sensors.update(request.sensor.id, {
-      level: 0,
+    if (request.status !== 'COMPLETED') return;
+    const barrelId = request.barrel?.id ?? request.sensor?.barrel?.id;
+    if (!barrelId) return;
+    await this.barrels.update(barrelId, {
       lastCollectionAt: request.completedAt ?? new Date(),
     });
-    this.logger.log(
-      `Coleta #${request.id} concluída: barril ${request.sensor.code} voltou a 0%.`,
-    );
-  }
-
-  private enqueue<T>(key: string, work: () => Promise<T>): Promise<T> {
-    const previous = this.queues.get(key) ?? Promise.resolve();
-    const run = previous.catch(() => undefined).then(work);
-    const tail = run.catch(() => undefined);
-    this.queues.set(key, tail);
-    void tail.then(() => {
-      if (this.queues.get(key) === tail) this.queues.delete(key);
+    const installed = await this.sensors.find({
+      where: { barrel: { id: barrelId } },
     });
-    return run;
+    if (installed.length) {
+      await this.sensors.update(
+        { id: In(installed.map((sensor) => sensor.id)) },
+        { level: 0 },
+      );
+    }
+    this.logger.log(
+      `Coleta #${request.id} concluída: barril ${request.barrel?.code ?? barrelId} voltou a 0%.`,
+    );
   }
 }

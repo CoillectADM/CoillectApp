@@ -7,14 +7,14 @@ import type { SensorReading } from '../sensor/entities/sensor-reading.entity';
 
 /** Uma leitura do sensor (físico ou virtual) chegou e foi gravada. */
 export const SENSOR_READING_RECEIVED = 'sensor.reading.received';
-/** O listener do sensor criou uma solicitação de coleta. */
+/** Uma solicitação de coleta foi criada (pelo listener do sensor, pela empresa ou no fluxo antigo). */
 export const COLLECTION_REQUEST_CREATED = 'collection-request.created';
 /** Uma solicitação mudou de status (iniciada, concluída, recusada, cancelada). */
 export const COLLECTION_REQUEST_STATUS_CHANGED =
   'collection-request.status-changed';
 
 export interface SensorReadingReceivedEvent {
-  /** Sensor já carregado com condomínio, síndico e empresa. */
+  /** Sensor já carregado com barril, condomínio, síndico e empresa. */
   sensor: Sensor;
   reading: SensorReading;
 }
@@ -31,6 +31,7 @@ export interface CollectionRequestStatusChangedEvent {
 export type CollectionTriggerReason =
   | 'THRESHOLD_REACHED'
   | 'BELOW_THRESHOLD'
+  | 'SENSOR_NOT_INSTALLED'
   | 'REQUEST_ALREADY_OPEN'
   | 'NO_COMPANY_LINKED';
 
@@ -39,7 +40,7 @@ export interface CollectionTriggerResult {
   kind: 'collection-trigger';
   triggered: boolean;
   reason: CollectionTriggerReason;
-  /** Solicitação criada agora ou a que já estava aberta para o sensor. */
+  /** Solicitação criada agora ou a que já estava aberta para o barril. */
   request: CollectionRequest | null;
 }
 

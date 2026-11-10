@@ -4,12 +4,13 @@ API NestJS + PostgreSQL do MVP Coillect. Liga o sensor do barril de óleo aos tr
 
 ```
 Sensor físico (ESP32) ou sensor virtual
-  └─ POST /api/sensor/readings { sensorId, level }
-       └─ listener: nível ≥ limite e nenhuma coleta aberta?
-            └─ cria UMA solicitação de coleta (PENDING)
-                 ├─ app-mobile-empresa: recebe, inicia e conclui a coleta
-                 ├─ app-mobile-sindico: cópia/notificação da MESMA solicitação
-                 └─ interface-desktop-adm-coillect: acompanha barris e solicitações
+  └─ POST /api/sensor-alert { sensorId, percentual, dataHora }      (SensorAlertController)
+       └─ SensorAlertService.processarAlerta: atualiza o sensor e grava a leitura
+            └─ listener: barril atingiu o limite e não há coleta aberta?
+                 └─ cria UMA solicitação de coleta do barril (PENDING)
+                      ├─ app-mobile-empresa: recebe a solicitação e o aviso, agenda e conclui
+                      ├─ app-mobile-sindico: só a cópia/notificação da MESMA solicitação
+                      └─ interface-desktop-adm-coillect: cadastra e acompanha tudo
 ```
 
 ## Rodar
@@ -42,22 +43,30 @@ Criadas automaticamente na primeira subida (`SEED_DEMO=true`):
 | Empresa coletora | `empresa@coillect.com` | `Coillect@2025` |
 | Desktop administrativo | sem login | — |
 
-Sensores: `COI-DEMO-01` (Condomínio Demonstração, do síndico de demonstração, começa em 0%), `COI-ILUS-02` e `COI-ILUS-03` (ilustrativos). Limite: 80%.
+Mesmos nomes dos mockups dos apps:
+
+| Condomínio | Bairro | Barril | Sensor | Nível inicial |
+|---|---|---|---|---|
+| Residencial Aurora (síndico Leonardo Costa) | Jardim Paulista | `BRL-8472` | `CLT-8472-A` | 0% (usado na demonstração) |
+| Condomínio Bosque | Vila Mariana | `BRL-1264` | `CLT-1264-B` | 62% |
+| Edifício Átria | Pinheiros | `BRL-9801` | `CLT-9801-C` | 31% |
+
+Empresa coletora dos três: EcoColeta Ambiental. Limite de alerta: 80%.
 
 Para repetir a apresentação do zero: `POST /api/admin/demo/reset`.
 
 ## Simular o sensor agora
 
 ```bash
-curl -X POST http://localhost:3000/api/sensor/readings \
-  -H "Content-Type: application/json" -d '{"sensorId":"COI-DEMO-01","level":85}'
+curl -X POST http://localhost:3000/api/sensor-alert \
+  -H "Content-Type: application/json" -d '{"sensorId":"CLT-8472-A","percentual":86}'
 ```
 
 ## Testes
 
 | Comando | O que verifica |
 |---|---|
-| `npm run test:mvp` | Regra de disparo, contrato do sensor, formatos de resposta, configuração |
+| `npm run test:mvp` | Regra de disparo, contrato do sensor, formatos de resposta, textos das notificações, configuração |
 | `npm run test:e2e:mvp` | Fluxo completo contra PostgreSQL real (reinicia os dados de demonstração do banco usado) |
 | `npm run smoke -- <URL>/api --reset` | O mesmo ciclo contra uma API já publicada (local ou cloud) |
 
@@ -69,3 +78,4 @@ O GitHub Actions roda os três a cada push em `backend/`.
 - [API para os três apps](../docs/api-apps.md): rotas por app, formatos e o que falta nos apps
 - [Publicar na cloud](../docs/deploy-cloud.md): variáveis de ambiente, Render e outros provedores
 - [Estado atual do backend](../docs/estado-atual.md): o que foi reutilizado, ajustado e criado
+- [Diagramas de classes × código](../docs/diagramas.md): onde cada classe dos diagramas está implementada

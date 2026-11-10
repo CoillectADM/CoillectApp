@@ -3,11 +3,13 @@ import { CollectionTriggerReason } from '../events/domain-events';
 export interface CollectionTriggerInput {
   /** Nível recebido do sensor (%). */
   level: number;
-  /** Limite configurado no sensor (%). */
+  /** limiteAlerta do barril (%). */
   threshold: number;
-  /** Já existe solicitação PENDING/SCHEDULED para o sensor? */
+  /** O sensor está instalado em um barril? */
+  hasBarrel: boolean;
+  /** Já existe solicitação PENDING/SCHEDULED para o barril? */
   hasOpenRequest: boolean;
-  /** O condomínio do sensor tem empresa coletora vinculada? */
+  /** O condomínio do barril tem empresa coletora vinculada? */
   hasCompany: boolean;
 }
 
@@ -18,13 +20,17 @@ export interface CollectionTriggerDecision {
 
 /**
  * Regra de disparo da coleta (única para sensor físico e virtual):
- * cria UMA solicitação quando o nível atinge o limite e não há outra aberta.
+ * cria UMA solicitação por barril quando o nível atinge o limite
+ * (`FillLevelCalculator.atingiuLimite` do diagrama) e não há outra aberta.
  */
 export function evaluateCollectionTrigger(
   input: CollectionTriggerInput,
 ): CollectionTriggerDecision {
   if (input.level < input.threshold) {
     return { create: false, reason: 'BELOW_THRESHOLD' };
+  }
+  if (!input.hasBarrel) {
+    return { create: false, reason: 'SENSOR_NOT_INSTALLED' };
   }
   if (input.hasOpenRequest) {
     return { create: false, reason: 'REQUEST_ALREADY_OPEN' };
