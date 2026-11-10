@@ -28,6 +28,10 @@ export interface CollectionRequestView {
   } | null;
   user: { id: number; name: string; email: string } | null;
   company: { id: number; name: string; iconeUrl: string | null } | null;
+  /** Campos antigos, mantidos para o frontend web existente. */
+  userCpfSnapshot: string | null;
+  companyCnpjSnapshot: string | null;
+  userAddressSnapshot: string | null;
 }
 
 export function toRequestView(request: CollectionRequest): CollectionRequestView {
@@ -63,5 +67,8 @@ export function toRequestView(request: CollectionRequest): CollectionRequestView
           iconeUrl: request.company.iconeUrl ?? null,
         }
       : null,
+    userCpfSnapshot: request.userCpfSnapshot ?? null,
+    companyCnpjSnapshot: request.companyCnpjSnapshot ?? null,
+    userAddressSnapshot: request.userAddressSnapshot ?? null,
   };
 }

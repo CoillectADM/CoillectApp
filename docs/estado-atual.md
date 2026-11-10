@@ -8,7 +8,7 @@ Base: `main` @ `76f1237` ("atualizacao swagger"). Classificação conforme o con
 | Login de usuário/síndico (`POST auth/login`) e de empresa (`POST auth/company/login`), guards JWT | REUTILIZAR | Resposta ganhou `role` e `profile`; `access_token` continua igual |
 | Envelope `APIResponse` | REUTILIZAR | Usado em todas as rotas novas |
 | Entidades `users`, `companies` (+ endereço, contato, representante) | REUTILIZAR | Sem mudança; cadastro de empresa e usuário continuam como estavam |
-| `collection_requests` e suas rotas | AJUSTAR | Vínculo com o sensor, `origin`, `levelAtRequest`, `completedAt`, `updatedAt`; `company/active` inclui `SCHEDULED`; nova rota `company-complete`; respostas sem hashes de senha |
+| `collection_requests` e suas rotas | AJUSTAR | Vínculo com o sensor, `origin`, `levelAtRequest`, `completedAt`, `updatedAt`; `company/active` inclui `SCHEDULED`; nova rota `company-complete`; respostas sem hashes de senha (campos `*Snapshot` mantidos para o frontend web) |
 | Conexão com o banco por variáveis fixas e porta 3000 fixa | AJUSTAR | `DATABASE_URL` ou `DATABASE_*`, SSL opcional, `PORT` |
 | Dockerfile preso ao host `db:5432` (`wait-for-it.sh`) | AJUSTAR | Removida a dependência; o TypeORM reconecta sozinho. `wait-for-it.sh` ficou no repositório, sem uso |
 | `docker-compose.yaml` exigia `backend/.env` | AJUSTAR | `.env` agora é opcional |
