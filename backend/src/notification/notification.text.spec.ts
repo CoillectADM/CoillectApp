@@ -3,6 +3,8 @@ import {
   empresaNotificationText,
   formatDate,
   sindicoNotificationText,
+  helpNotificationTexts,
+  helpTopicLabel,
 } from './notification.text';
 
 describe('textos das notificações', () => {
@@ -48,5 +50,34 @@ describe('textos das notificações', () => {
     expect(
       empresaNotificationText(request, 'COLLECTION_CANCELLED').message,
     ).toBe('A solicitação #12 de Residencial Aurora foi cancelada pelo síndico.');
+  });
+});
+
+describe('textos do "Precisa de ajuda?"', () => {
+  const input = {
+    sindico: 'Leonardo Costa',
+    condominio: 'Residencial Aurora',
+    empresa: 'EcoColeta Ambiental',
+    assunto: 'COLETA',
+    mensagem: 'O barril está quase transbordando.',
+  };
+
+  it('empresa recebe o aviso com condomínio, síndico e assunto', () => {
+    const { empresa } = helpNotificationTexts(input);
+    expect(empresa.title).toBe('Pedido de ajuda • Residencial Aurora');
+    expect(empresa.message).toBe('Leonardo Costa (Coleta): O barril está quase transbordando.');
+  });
+
+  it('síndico recebe a confirmação; assunto desconhecido vira "Outro assunto"', () => {
+    const { sindico } = helpNotificationTexts({ ...input, assunto: 'XYZ' });
+    expect(sindico.title).toBe('Pedido de ajuda enviado');
+    expect(sindico.message).toContain('EcoColeta Ambiental (assunto: Outro assunto)');
+    expect(helpTopicLabel('SENSOR')).toBe('Sensor');
+  });
+
+  it('mensagens longas são cortadas no limite da coluna (300)', () => {
+    const { empresa } = helpNotificationTexts({ ...input, mensagem: 'x'.repeat(600) });
+    expect(empresa.message).toHaveLength(300);
+    expect(empresa.message.endsWith('…')).toBe(true);
   });
 });

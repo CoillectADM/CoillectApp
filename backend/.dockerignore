@@ -23,3 +23,6 @@ test
 # src/
 # tsconfig.json
 # tsconfig.build.json
+
+# Comprovantes gravados em disco no modo local (sem Azure)
+storage-local

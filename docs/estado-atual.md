@@ -20,6 +20,9 @@ Atualizado com o alinhamento aos diagramas de classes (ver [diagramas.md](diagra
 | Health check e CI do backend | FALTANTE → criado | `GET health`, `.github/workflows/backend.yml` |
 | Firmware do ESP32 (Diagrama 1), ESP32 virtual no Wokwi e sensor virtual no PC | FALTANTE → criado | `sensor-esp32/` (mesmo firmware no Wokwi e na placa; simulador com painel no PC); CI em `.github/workflows/sensor-esp32.yml` |
 | Coleta repetida logo após a conclusão (sensor ainda lendo o barril cheio) | AJUSTAR | Barril guarda `awaitingEmptyReading`; o listener só abre outra solicitação depois de uma leitura abaixo do limite (`AWAITING_EMPTY_READING`) |
+| Azure Storage (Atividade A02): Blob Storage e Queue Storage | FALTANTE → criado | `src/cloud/*`: cliente REST do Storage (Shared Key/SAS, sem SDK), comprovante JSON de cada coleta concluída no container `comprovantes-coleta` (`src/collection-request/receipt*.ts`), notificações pela fila `coillect-notificacoes` com idempotência, poison queue e fallback; sem Azure funciona em modo local. Ver [azure-a02.md](azure-a02.md) |
+| Monitoramento | FALTANTE → criado | Eventos de negócio em JSON no stdout (`src/cloud/telemetry.ts`) para o Log Analytics; `GET health` responde 503 sem banco; `GET admin/cloud` para o desktop |
+| "Precisa de ajuda?" do síndico | FALTANTE → criado | `POST help-request` → aviso `HELP_REQUESTED` para a empresa (via fila) e confirmação para o síndico |
 | Fluxo antigo de pedido manual pelo usuário (`POST collection-request`, `:id/cancel`, `:id/complete`) | LEGADO | Mantido para o frontend web; cancelar/concluir só vale para pedidos `MANUAL` abertos (403 nas coletas do sensor ou da empresa); os novos apps não usam |
 | Testes `*.spec.ts` antigos (vários não compilam ou chamam métodos inexistentes; um arquivo vazio) | LEGADO | Não alterados; o CI roda `npm run test:mvp` e `npm run test:e2e:mvp` |
 | `frontend/` (web) | Fora deste PR | Não alterado |

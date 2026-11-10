@@ -18,6 +18,10 @@ export interface CollectionRequestView {
   scheduledDate: Date | null;
   completedAt: Date | null;
   updatedAt: Date | null;
+  /** true quando o comprovante da coleta já está no Blob Storage. */
+  receiptAvailable: boolean;
+  /** Nome do comprovante no container "comprovantes-coleta" (null até a conclusão). */
+  receiptBlob: string | null;
   condominiumName: string | null;
   condominiumNeighborhood: string | null;
   /** Barril específico que a empresa deve coletar. */
@@ -57,6 +61,8 @@ export function toRequestView(request: CollectionRequest): CollectionRequestView
     scheduledDate: request.scheduledDate ?? null,
     completedAt: request.completedAt ?? null,
     updatedAt: request.updatedAt ?? null,
+    receiptAvailable: !!request.receiptBlob,
+    receiptBlob: request.receiptBlob ?? null,
     condominiumName: condominium?.name ?? null,
     condominiumNeighborhood: condominium?.neighborhood ?? null,
     barrel: barrel

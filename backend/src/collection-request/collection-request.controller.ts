@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -17,6 +18,7 @@ import { JwtUserAuthGuard } from 'src/auth/guards/jwt-user.guard';
 import { JwtCompanyAuthGuard } from 'src/auth/guards/jwt-company.guard';
 import { APIResponse } from 'src/utils/response/response';
 import { toRequestView } from './collection-request.view';
+import { ReceiptService } from './receipt.service';
 import {
   ApiBearerAuth,
   ApiTags,
@@ -39,6 +41,7 @@ function ok(data: unknown, message: string, statusCode = 200): APIResponse {
 export class CollectionRequestController {
   constructor(
     private readonly collectionRequestService: CollectionRequestService,
+    private readonly receipts: ReceiptService,
   ) {}
 
   // ---------------------------------------------------------------
@@ -71,6 +74,21 @@ export class CollectionRequestController {
       req.user.sub,
     );
     return ok(list.map(toRequestView), 'Histórico de solicitações do usuário');
+  }
+
+  @UseGuards(JwtUserAuthGuard)
+  @Get(':id/receipt')
+  @ApiOperation({
+    summary:
+      'Síndico: comprovante da coleta concluída (JSON lido do Azure Blob Storage, container comprovantes-coleta)',
+  })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
+  async getReceiptForUser(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<APIResponse> {
+    const request = await this.collectionRequestService.findForUser(id, req.user.sub);
+    return this.receiptResponse(request);
   }
 
   @UseGuards(JwtUserAuthGuard)
@@ -158,6 +176,21 @@ export class CollectionRequestController {
   }
 
   @UseGuards(JwtCompanyAuthGuard)
+  @Get('company/:id/receipt')
+  @ApiOperation({
+    summary:
+      'Empresa: comprovante da coleta concluída (JSON lido do Azure Blob Storage, container comprovantes-coleta)',
+  })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
+  async getReceiptForCompany(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<APIResponse> {
+    const request = await this.collectionRequestService.findForCompany(id, req.user.sub);
+    return this.receiptResponse(request);
+  }
+
+  @UseGuards(JwtCompanyAuthGuard)
   @Post('company/schedule')
   @ApiOperation({
     summary:
@@ -224,5 +257,20 @@ export class CollectionRequestController {
       req.user.sub,
     );
     return ok(toRequestView(request), 'Solicitação recusada');
+  }
+
+  private async receiptResponse(request: any): Promise<APIResponse> {
+    if (request.status !== 'COMPLETED') {
+      throw new NotFoundException(
+        `A solicitação #${request.id} ainda não foi concluída; o comprovante é gerado na conclusão.`,
+      );
+    }
+    const view = await this.receipts.read(request);
+    if (!view) {
+      throw new NotFoundException(
+        `O comprovante da solicitação #${request.id} ainda está sendo gerado. Tente de novo em instantes.`,
+      );
+    }
+    return ok(view, 'Comprovante da coleta');
   }
 }

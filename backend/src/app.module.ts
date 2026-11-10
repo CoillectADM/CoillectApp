@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { buildDatabaseOptions } from './config/database.config';
 import { EventsModule } from './events/events.module';
+import { CloudModule } from './cloud/cloud.module';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
@@ -19,6 +20,8 @@ import { AdminModule } from './admin/admin.module';
     // Banco configurado por variáveis de ambiente (DATABASE_URL ou DATABASE_*): ver config/database.config.ts
     TypeOrmModule.forRootAsync({ useFactory: () => buildDatabaseOptions() }),
     EventsModule,
+    // Azure Storage (Blob: comprovantes; Queue: notificações). Sem Azure: modo local.
+    CloudModule,
     UserModule,
     AuthModule,
     CompanyModule,

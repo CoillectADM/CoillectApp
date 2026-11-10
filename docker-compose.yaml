@@ -22,6 +22,17 @@ services:
     ports:
       - "5482:5432"
 
+  # Emulador oficial do Azure Storage (Blob, Queue e Table) — dispensa conta no Azure.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - appnet
+
   backend:
     build:
       context: ./backend
@@ -30,6 +41,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      azurite:
+        condition: service_started
     env_file:
       - path: ./backend/.env
         required: false
@@ -43,6 +56,9 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_NAME: app_db
       JWT_SECRET: supersegredo123
+      # Blob (comprovantes) + Queue (notificações). Padrão: Azurite deste compose.
+      # Para usar a Storage Account do Azure: AZURE_STORAGE_CONNECTION_STRING="..." docker compose up
+      AZURE_STORAGE_CONNECTION_STRING: "${AZURE_STORAGE_CONNECTION_STRING:-UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://azurite}"
     ports:
       - "3000:3000"
     networks:

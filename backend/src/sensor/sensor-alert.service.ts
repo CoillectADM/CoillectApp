@@ -20,6 +20,8 @@ import {
   CollectionRequestView,
   toRequestView,
 } from '../collection-request/collection-request.view';
+import { logEvent } from '../cloud/telemetry';
+import { condominiumOf, thresholdOf } from './sensor-links';
 
 export interface SensorAlertResult {
   reading: {
@@ -96,6 +98,17 @@ export class SensorAlertService {
       );
       const trigger = results.find(isCollectionTriggerResult) ?? null;
       const request = trigger?.request ?? null;
+      // Uma linha JSON por leitura: base do dashboard de monitoramento (KQL).
+      logEvent('leitura_sensor', {
+        sensorId: sensor.code,
+        percentual: alert.percentual,
+        limite: thresholdOf(sensor),
+        condominio: condominiumOf(sensor)?.name ?? null,
+        barril: sensor.barrel?.code ?? null,
+        disparouColeta: trigger?.triggered ?? false,
+        motivo: trigger?.reason ?? null,
+        solicitacaoId: request?.id ?? null,
+      });
 
       return {
         reading: {

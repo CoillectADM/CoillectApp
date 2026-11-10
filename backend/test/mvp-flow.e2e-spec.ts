@@ -305,6 +305,58 @@ describe('Fluxo MVP Coillect (e2e)', () => {
     expect(empty.body.data).toHaveLength(0);
   });
 
+  it('comprovante da coleta concluída fica no Blob Storage e os apps leem', async () => {
+    const sindico = await asSindico(
+      request(http).get(`/api/collection-request/${firstRequestId}/receipt`),
+    ).expect(200);
+    expect(sindico.body.data).toMatchObject({
+      requestId: firstRequestId,
+      receipt: {
+        tipo: 'comprovante-de-coleta',
+        protocolo: `COL-${String(firstRequestId).padStart(6, '0')}`,
+        solicitacaoId: firstRequestId,
+        origem: 'SENSOR',
+        condominio: { nome: DEMO_MAIN_CONDOMINIUM },
+        sindico: { nome: DEMO_SINDICO.name },
+        empresaColetora: { nome: DEMO_COMPANY.name },
+        barril: { codigo: DEMO_MAIN_BARREL },
+        sensor: DEMO_MAIN_SENSOR,
+      },
+      storage: { container: 'comprovantes-coleta' },
+    });
+    expect(sindico.body.data.receipt.concluidaEm).toBeTruthy();
+    expect(sindico.body.data.storage.blob).toMatch(
+      /^\d{4}\/\d{2}\/\d{2}\/coleta-\d+-\d{8}T\d{6}Z\.json$/,
+    );
+
+    const company = await asCompany(
+      request(http).get(`/api/collection-request/company/${firstRequestId}/receipt`),
+    ).expect(200);
+    expect(company.body.data.storage.blob).toBe(sindico.body.data.storage.blob);
+
+    const history = await asCompany(
+      request(http).get('/api/collection-request/company/history'),
+    ).expect(200);
+    expect(
+      history.body.data.find((r: any) => r.id === firstRequestId),
+    ).toMatchObject({ receiptAvailable: true, receiptBlob: sindico.body.data.storage.blob });
+
+    // Painel "Nuvem" do desktop: Blob com o comprovante e a fila sem falhas.
+    const cloud = await request(http).get('/api/admin/cloud').expect(200);
+    expect(cloud.body.data.mode).toBe(
+      process.env.AZURE_STORAGE_CONNECTION_STRING ? 'azure' : 'local',
+    );
+    expect(cloud.body.data.blob.recent.map((b: any) => b.name)).toContain(
+      sindico.body.data.storage.blob,
+    );
+    expect(cloud.body.data.queue.processed).toBeGreaterThanOrEqual(3);
+    expect(cloud.body.data.queue.failed).toBe(0);
+    // Pausar a fila só existe com o Azure Storage (no modo local ela é em memória).
+    if (cloud.body.data.mode === 'local') {
+      await request(http).post('/api/admin/cloud/queue/pause').expect(409);
+    }
+  });
+
   it('empresa agenda a coleta de um barril ANTES do alerta (origem COMPANY)', async () => {
     const res = await asCompany(
       request(http)
@@ -372,11 +424,53 @@ describe('Fluxo MVP Coillect (e2e)', () => {
     const res = await sendAlert(81).expect(201);
     expect(res.body.data.collection.triggered).toBe(true);
     expect(res.body.data.collection.request.id).not.toBe(firstRequestId);
+    // Ainda em aberto: o comprovante só existe depois da conclusão.
+    await asSindico(
+      request(http).get(`/api/collection-request/${res.body.data.collection.request.id}/receipt`),
+    ).expect(404);
 
     const conflict = await asCompany(
       request(http).post(`/api/collection-request/${firstRequestId}/accept`).send({}),
     ).expect(409);
     expect(conflict.body.message).toContain('COMPLETED');
+  });
+
+  it('"Precisa de ajuda?": síndico envia mensagem e a empresa recebe o aviso', async () => {
+    const res = await asSindico(
+      request(http)
+        .post('/api/help-request')
+        .send({ message: 'O barril está quase transbordando. Conseguem vir hoje?', topic: 'COLETA' }),
+    ).expect(201);
+    expect(res.body.data).toMatchObject({
+      sent: true,
+      company: DEMO_COMPANY.name,
+      condominium: DEMO_MAIN_CONDOMINIUM,
+      topic: 'COLETA',
+    });
+
+    const notices = await asCompany(request(http).get('/api/notifications/company')).expect(200);
+    expect(notices.body.data[0]).toMatchObject({
+      type: 'HELP_REQUESTED',
+      audience: 'EMPRESA',
+      title: `Pedido de ajuda • ${DEMO_MAIN_CONDOMINIUM}`,
+      requestId: null,
+      request: null,
+      read: false,
+    });
+    expect(notices.body.data[0].message).toContain(DEMO_SINDICO.name);
+    expect(notices.body.data[0].message).toContain('Conseguem vir hoje?');
+
+    const mine = await asSindico(request(http).get('/api/notifications/mine')).expect(200);
+    expect(mine.body.data[0]).toMatchObject({
+      type: 'HELP_REQUESTED',
+      title: 'Pedido de ajuda enviado',
+    });
+
+    await asSindico(request(http).post('/api/help-request').send({ message: '' })).expect(400);
+    await asSindico(
+      request(http).post('/api/help-request').send({ message: 'oi', topic: 'XYZ' }),
+    ).expect(400);
+    await request(http).post('/api/help-request').send({ message: 'sem login' }).expect(401);
   });
 
   it('síndico e empresa marcam notificações como lidas', async () => {
