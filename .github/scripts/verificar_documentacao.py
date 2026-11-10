@@ -126,7 +126,10 @@ def main():
                 with open(os.path.join(opcoes.mermaid_dir, base + '.origem'), 'w', encoding='utf-8') as fh:
                     fh.write('%s:%d\n' % (rel, inicio))
 
-    print('%d links internos conferidos, %d diagramas Mermaid encontrados, %d erro(s).' % (links, diagramas, erros))
+    resumo = '%d links internos conferidos, %d diagramas Mermaid encontrados, %d erro(s).' % (links, diagramas, erros)
+    print(resumo)
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        print('::notice title=Documentação::' + resumo)
     return 1 if erros else 0
 
 

@@ -53,5 +53,5 @@ jobs:
               printf '%s\n' "$saida"
             fi
           done
-          echo "$total diagrama(s) conferido(s), $falhas com erro."
+          echo "::notice title=Documentação::$total diagrama(s) Mermaid desenhado(s) pelo mermaid-cli, $falhas com erro."
           test "$falhas" -eq 0
