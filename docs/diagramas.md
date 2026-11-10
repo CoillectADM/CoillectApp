@@ -4,18 +4,18 @@ Os dois diagramas mínimos do projeto ("Diagramas de classes mínimos — Coille
 
 ## Diagrama 1 — software do sensor
 
-Ainda não implementado neste repositório: é a próxima entrega (sensor virtual do ESP32). O contrato que ele deve cumprir já está na API e em [contrato-sensor.md](contrato-sensor.md).
+Implementado em [`sensor-esp32/coillect_sensor/coillect_sensor.ino`](../sensor-esp32/coillect_sensor/coillect_sensor.ino): o mesmo firmware roda no ESP32 virtual do Wokwi e na placa física. O sensor virtual do PC ([`sensor-esp32/simulador-pc/sensor-virtual.mjs`](../sensor-esp32/simulador-pc/sensor-virtual.mjs)) repete as mesmas classes em JavaScript. Passo a passo em [sensor-esp32/README.md](../sensor-esp32/README.md).
 
-| Classe do diagrama | Papel | Onde a API espera o resultado |
+| Classe do diagrama | Firmware (ESP32 / Wokwi) | Onde a API recebe o resultado |
 |---|---|---|
-| `SensorController.monitorarBarril()` | Lê o sensor, calcula e envia | — |
-| `UltrasonicSensor.medirDistanciaCm()` | Distância da tampa até o óleo | — |
-| `FillLevelCalculator.calcularPercentual()` / `atingiuLimite()` | Distância → percentual; limite de 80% | `percentual` do payload |
-| `SensorConfig` (`sensorId`, `apiUrl`, `roteadorId`, `alturaBarrilCm`, `limiteAlerta`) | Configuração do dispositivo | `sensorId` cadastrado em `POST /api/admin/sensors` |
-| `RouterClient.enviarAlerta(payload)` | POST pelo roteador | `POST /api/sensor-alert` |
-| `AlertPayload` (`sensorId`, `percentual`, `dataHora`) | Dados enviados | `SensorAlertPayload` (`backend/src/sensor/dto/sensor-alert.payload.ts`) |
+| `SensorController.monitorarBarril()` | Chamado no `loop()`: mede a cada 1 s, decide e envia | — |
+| `UltrasonicSensor.medirDistanciaCm()` | HC-SR04 nos pinos 5 (TRIG) e 18 (ECHO); mediana de 5 ecos | — |
+| `FillLevelCalculator.calcularPercentual()` / `atingiuLimite()` | `(alturaBarrilCm - distanciaCm) / alturaBarrilCm`, de 0 a 100; limite de 80% | `percentual` do payload |
+| `SensorConfig` (`sensorId`, `apiUrl`, `roteadorId`, `alturaBarrilCm`, `limiteAlerta`) | `struct SensorConfig`, preenchida pelas constantes do começo do arquivo (+ senha do Wi-Fi) | `sensorId` cadastrado em `POST /api/admin/sensors` |
+| `RouterClient.enviarAlerta(payload)` | Wi-Fi (`roteadorId` = SSID) + `HTTPClient`; HTTPS com `setInsecure()` | `POST /api/sensor-alert` |
+| `AlertPayload` (`sensorId`, `percentual`, `dataHora`) | JSON montado com `snprintf`; `dataHora` do NTP em `-03:00` | `SensorAlertPayload` (`backend/src/sensor/dto/sensor-alert.payload.ts`) |
 
-**Decisão:** o diagrama envia só ao atingir 80%. O projeto adotou **envio periódico + alerta imediato**, para os apps mostrarem o nível real. A API decide a coleta nos dois casos, então o firmware que só envia no alerta também funciona.
+**Decisão:** o diagrama envia só ao atingir 80%. O projeto adotou **envio periódico + alerta imediato** (mais envio quando o nível muda 5 pontos), para os apps mostrarem o nível real. A API decide a coleta em todos os casos, então um firmware que só envie no alerta também funciona.
 
 ## Diagrama 2 — trigger da API
 
@@ -28,10 +28,11 @@ Ainda não implementado neste repositório: é a próxima entrega (sensor virtua
 | `UserRepository.buscarSindicoPorSensor()` | Relação sensor → barril → condomínio → síndico | `src/sensor/sensor-links.ts` (`SENSOR_RELATIONS`) |
 | `CompanyRepository.buscarEmpresaPorSensor()` | Relação sensor → barril → condomínio → empresa | `src/sensor/sensor-links.ts` |
 | `CollectionRequestRepository.salvar()` | `CollectionRequestService.createFromSensor()` | `src/collection-request/collection-request.service.ts` |
+| Regra de disparo (limite atingido e nenhuma coleta aberta) | `evaluateCollectionTrigger()`, chamada pelo listener; após uma coleta concluída, espera o sensor ler o barril vazio (`AWAITING_EMPTY_READING`) | `src/collection-request/collection-trigger.rule.ts`, `sensor-trigger.listener.ts` |
 | `CollectionRequest.criarComoPendente()` | Criação com `status: PENDING`, `origin: SENSOR` | idem |
 | `NotificationService.notificarSindico()` / `notificarEmpresa()` | Mesmos nomes; notificações gravadas no banco | `src/notification/notification.service.ts` |
 | `Sensor` (`codigo`, `percentualAtual`, `ultimaLeitura`, `atualizarLeitura()`) | `code`, `level`, `lastReadingAt` | `src/sensor/entities/sensor.entity.ts` |
-| `Barrel` (`codigo`, `capacidadeLitros`, `limiteAlerta`) | `code`, `capacityLiters`, `alertThreshold` (+ `lastCollectionAt`) | `src/sensor/entities/barrel.entity.ts` |
+| `Barrel` (`codigo`, `capacidadeLitros`, `limiteAlerta`) | `code`, `capacityLiters`, `alertThreshold` (+ `lastCollectionAt`, `awaitingEmptyReading`) | `src/sensor/entities/barrel.entity.ts` |
 | `Condominium` (`nome`, `endereco`) | `name`, `address` (+ `neighborhood`, síndico e empresa) | `src/sensor/entities/condominium.entity.ts` |
 | `User` (`name`, `email`, `perfil`) | Entidade existente; o perfil volta no login (`role`) | `src/user/entities/user/user.entity.ts` |
 | `Company` (`name`, `email`, `cnpj`) | Entidade existente | `src/company/entities/company/company.entity.ts` |

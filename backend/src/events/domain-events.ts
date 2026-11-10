@@ -33,6 +33,7 @@ export type CollectionTriggerReason =
   | 'BELOW_THRESHOLD'
   | 'SENSOR_NOT_INSTALLED'
   | 'REQUEST_ALREADY_OPEN'
+  | 'AWAITING_EMPTY_READING'
   | 'NO_COMPANY_LINKED';
 
 /** Resultado devolvido pelo listener que avalia a leitura do sensor. */

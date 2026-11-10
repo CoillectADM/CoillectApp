@@ -352,6 +352,22 @@ describe('Fluxo MVP Coillect (e2e)', () => {
     ).expect(400);
   });
 
+  it('após a coleta, só abre outra solicitação depois de o sensor ler o barril vazio', async () => {
+    // O sensor ainda lê o barril cheio (ex.: barril simulado no Wokwi não foi esvaziado).
+    const still = await sendAlert(85).expect(201);
+    expect(still.body.data.collection).toMatchObject({
+      triggered: false,
+      reason: 'AWAITING_EMPTY_READING',
+      request: null,
+    });
+    const notices = await asCompany(request(http).get('/api/notifications/company')).expect(200);
+    expect(notices.body.data).toHaveLength(1);
+
+    // O coletor esvaziou o barril: o sensor lê ~0% e o ciclo recomeça.
+    const empty = await sendAlert(3).expect(201);
+    expect(empty.body.data.collection.reason).toBe('BELOW_THRESHOLD');
+  });
+
   it('o fluxo pode ser repetido: nova leitura no limite gera nova solicitação', async () => {
     const res = await sendAlert(81).expect(201);
     expect(res.body.data.collection.triggered).toBe(true);

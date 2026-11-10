@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "author": "Coillect",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "sonar",
+      "top": -153.3,
+      "left": -61.7,
+      "attrs": { "distance": "81" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 52.8,
+      "left": 172.25,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledAlerta",
+      "top": -22.8,
+      "left": 167,
+      "attrs": { "color": "red", "label": "Alerta" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 52.8,
+      "left": 239.45,
+      "rotate": 90,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledOnline",
+      "top": -22.8,
+      "left": 234.2,
+      "attrs": { "color": "green", "label": "API OK" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnEnviar",
+      "top": 179,
+      "left": 172.8,
+      "attrs": { "color": "blue", "label": "Enviar agora", "key": "e", "bounce": "0" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "sonar:VCC", "esp:5V", "red", [ "v0" ] ],
+    [ "sonar:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "sonar:TRIG", "esp:5", "orange", [ "v0" ] ],
+    [ "sonar:ECHO", "esp:18", "purple", [ "v0" ] ],
+    [ "esp:26", "r1:2", "red", [ "h0" ] ],
+    [ "r1:1", "ledAlerta:A", "red", [ "v0" ] ],
+    [ "ledAlerta:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "esp:27", "r2:2", "green", [ "h0" ] ],
+    [ "r2:1", "ledOnline:A", "green", [ "v0" ] ],
+    [ "ledOnline:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "btnEnviar:1.l", "esp:4", "blue", [ "h0" ] ],
+    [ "btnEnviar:2.l", "esp:GND.3", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

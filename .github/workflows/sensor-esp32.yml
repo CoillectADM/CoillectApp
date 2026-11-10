@@ -1,0 +1,143 @@
+name: Sensor ESP32 (firmware, Wokwi e sensor virtual)
+
+on:
+  push:
+    paths:
+      - "sensor-esp32/**"
+      - "backend/src/sensor/**"
+      - "backend/src/collection-request/**"
+      - ".github/workflows/sensor-esp32.yml"
+  pull_request:
+    paths:
+      - "sensor-esp32/**"
+      - "backend/src/sensor/**"
+      - "backend/src/collection-request/**"
+      - ".github/workflows/sensor-esp32.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  firmware-pc:
+    name: Firmware no PC (hardware simulado) e sensor virtual
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Testes do firmware (o mesmo .ino do Wokwi e do ESP32, compilado com g++)
+        run: |
+          g++ -std=c++17 -Wall -Wextra -I sensor-esp32/testes/mocks \
+            -o "$RUNNER_TEMP/firmware-testes" sensor-esp32/testes/firmware_testes.cpp 2>&1 | tee "$RUNNER_TEMP/1-gpp.log"
+          "$RUNNER_TEMP/firmware-testes" --capturar "$RUNNER_TEMP/roteiro-firmware.jsonl" 2>&1 | tee "$RUNNER_TEMP/2-firmware.log"
+
+      - name: Testes do sensor virtual no PC
+        run: node --test sensor-esp32/simulador-pc/sensor-virtual.test.mjs 2>&1 | tee "$RUNNER_TEMP/3-simulador.log"
+
+      - name: Resumo
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/2-firmware.log" ]; then
+            echo "::notice title=Firmware no PC::$(tail -n 1 "$RUNNER_TEMP/2-firmware.log")"
+          fi
+          if [ -f "$RUNNER_TEMP/3-simulador.log" ]; then
+            echo "::notice title=Sensor virtual no PC::$(grep -E '^ℹ (pass|fail) ' "$RUNNER_TEMP/3-simulador.log" | tr '\n' ' ')"
+          fi
+          { grep -h "FALHOU\|warning:\|error:" "$RUNNER_TEMP"/1-gpp.log "$RUNNER_TEMP"/2-firmware.log 2>/dev/null || true; } \
+            | head -n 20 | while read -r linha; do echo "::warning title=Firmware::$linha"; done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roteiro-firmware
+          path: ${{ runner.temp }}/roteiro-firmware.jsonl
+          if-no-files-found: error
+
+  firmware-esp32:
+    name: Firmware compila para o ESP32 (Arduino core da Espressif)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ESP32_INDEX: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Cache do core ESP32
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-esp32-${{ runner.os }}-v1
+
+      - name: Instalar o core ESP32
+        run: |
+          arduino-cli core update-index --additional-urls "$ESP32_INDEX"
+          arduino-cli core install esp32:esp32 --additional-urls "$ESP32_INDEX"
+          arduino-cli core list
+
+      - name: Compilar coillect_sensor.ino (placa "ESP32 Dev Module")
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32 --warnings default \
+            --additional-urls "$ESP32_INDEX" sensor-esp32/coillect_sensor 2>&1 | tee "$RUNNER_TEMP/esp32.log"
+          { grep -E "Sketch uses|Global variables" "$RUNNER_TEMP/esp32.log" || true; } \
+            | while read -r linha; do echo "::notice title=ESP32::$linha"; done
+
+  sensor-na-api:
+    name: Firmware e sensor virtual contra a API real (Docker + PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: firmware-pc
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: roteiro-firmware
+          path: ${{ runner.temp }}/roteiro
+
+      - name: Subir PostgreSQL + API (imagem da cloud)
+        run: |
+          docker build -t coillect-api ./backend 2>&1 | tail -n 5
+          docker network create coillect
+          docker run -d --name coillect-db --network coillect \
+            -e POSTGRES_USER=coillect -e POSTGRES_PASSWORD=coillect -e POSTGRES_DB=coillect \
+            postgres:17-alpine
+          docker run -d --name coillect-api --network coillect -p 8080:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://coillect:coillect@coillect-db:5432/coillect \
+            -e JWT_SECRET=ci-only-secret \
+            coillect-api
+
+      - name: Aguardar /api/health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health; then echo; exit 0; fi
+            sleep 3
+          done
+          echo "API não respondeu em 3 minutos" >&2
+          exit 1
+
+      - name: Requisições do firmware na API real
+        run: |
+          node sensor-esp32/testes/reproduzir-na-api.mjs http://localhost:8080/api \
+            "$RUNNER_TEMP/roteiro/roteiro-firmware.jsonl" --reset 2>&1 | tee "$RUNNER_TEMP/4-firmware-api.log"
+          echo "::notice title=Firmware na API real::$(grep -c '✓' "$RUNNER_TEMP/4-firmware-api.log") verificações OK"
+
+      - name: Sensor virtual do PC na API real (linha de comando e painel)
+        run: |
+          node sensor-esp32/testes/simulador-na-api.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/5-simulador-api.log"
+          echo "::notice title=Sensor virtual na API real::$(grep -c '✓' "$RUNNER_TEMP/5-simulador-api.log") verificações OK"
+
+      - name: Logs da API em caso de falha
+        if: failure()
+        run: docker logs coillect-api 2>&1 | tail -n 80
