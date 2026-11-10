@@ -201,8 +201,10 @@ azure('Azure Storage: fila de notificações e comprovantes no Blob (e2e)', () =
 
   it('mensagem inválida vai para a poison queue', async () => {
     const account = parseConnectionString(connection);
-    await new AzureQueue(account, 'coillect-notificacoes').send('isto não é JSON');
+    // A API cria a poison queue só na primeira falha; criada aqui para poder contar antes.
     const poison = new AzureQueue(account, 'coillect-notificacoes-poison');
+    await poison.createIfNotExists();
+    await new AzureQueue(account, 'coillect-notificacoes').send('isto não é JSON');
     await waitFor('mensagem na poison queue', async () => (await poison.approximateCount()) >= 1);
     expect((await cloud()).queue.poisoned).toBeGreaterThanOrEqual(1);
   });
