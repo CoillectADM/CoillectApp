@@ -1,0 +1,443 @@
+==========================================================================================
+ LEIA PRIMEIRO — GUIA DO PROJETO COILLECT PARA O CODEX (ChatGPT)
+ TCC (MVP universitário) + Atividade A02 de Computação em Nuvem II (entrega 16/11/2026)
+ Atualizado em 10/11/2026
+==========================================================================================
+
+  >>> CODEX: LEIA ESTE ARQUIVO INTEIRO ANTES DE QUALQUER OUTRA AÇÃO. <<<
+  >>> Ele é o mapa do sistema. Depois dele, leia os arquivos da seção 3. <<<
+
+------------------------------------------------------------------------------------------
+ 0. SEU PAPEL (CODEX) NESTA CONVERSA
+------------------------------------------------------------------------------------------
+
+Você vai trabalhar com o Allan, aluno e autor do projeto. Ele quer ENTENDER e OPERAR o sistema,
+não que você o reescreva. Suas missões, nesta ordem:
+
+  M1. Aprender como o sistema inteiro funciona (seções 1 a 4) e confirmar lendo o código.
+  M2. Ensinar o Allan a rodar TUDO localmente no computador dele (seção 5), um passo por vez,
+      conferindo com ele o resultado de cada passo antes de seguir.
+  M3. Ensinar a testar e a ensaiar a demonstração da aula (seções 6 e 7).
+  M4. Depois, ensinar os deploys (seção 8): API, banco e Azure Storage na Azure (recomendado
+      para a A02) ou, como alternativa, no Render.
+  M5. Ajudar na Atividade A02 (seção 9): o que já está implementado, o que configurar no portal
+      da Azure, que prints tirar e o que escrever no documento ABNT.
+
+Regras para você:
+  - Antes do primeiro comando, pergunte o sistema operacional (provavelmente Windows) e use a
+    sintaxe certa (PowerShell: $env:VAR="valor"; Git Bash/Linux/macOS: VAR=valor comando).
+  - Explique o PORQUÊ de cada passo em linguagem simples. Um comando por vez.
+  - Nunca peça para o Allan colar segredos no chat (senhas, connection strings, chaves). Ensine
+    onde colocá-los (arquivo .env local, variáveis do App Service, secrets do GitHub).
+  - Não altere código sem ele pedir. Se pedir, uma branch e um Pull Request por tarefa, e o CI
+    (GitHub Actions) tem que ficar verde antes do merge.
+  - Não invente rotas, arquivos ou comandos: confira no código e nos READMEs citados aqui.
+  - Se algo falhar, peça a saída exata do erro e diagnostique antes de sugerir mudanças.
+  - Segurança está FORA do escopo por decisão do Allan (sem login de admin, CORS aberto etc.).
+    Não transforme isso em tarefa, apenas mencione se for relevante para a cloud.
+
+------------------------------------------------------------------------------------------
+ 1. O QUE É O COILLECT
+------------------------------------------------------------------------------------------
+
+Coleta de óleo de cozinha usado em condomínios. Cada condomínio tem um BARRIL com um SENSOR
+ultrassônico (ESP32 + HC-SR04) que mede o nível. Quando o barril passa do limite (80%), a API
+cria uma SOLICITAÇÃO DE COLETA daquele barril específico para a EMPRESA COLETORA. O SÍNDICO só
+é NOTIFICADO (cópia informativa; ele não controla a coleta). Um ADMINISTRADOR cadastra e acompanha
+tudo pelo app desktop.
+
+Objetivo: MVP demonstrável em aula. Nada de produção, sem clientes reais.
+
+Peças:
+  - Sensor: ESP32 físico, ESP32 virtual no Wokwi (simulador online) ou sensor virtual no PC.
+    Todos mandam o MESMO pedido HTTP: POST /api/sensor-alert {sensorId, percentual, dataHora}.
+  - API (NestJS + PostgreSQL) com o "listener" que decide abrir a solicitação.
+  - Azure Storage: Queue (fila que entrega os avisos) e Blob (comprovante de cada coleta).
+  - 3 apps: app do síndico (Android), app da empresa (Android), administração (desktop).
+
+------------------------------------------------------------------------------------------
+ 2. REPOSITÓRIOS (GitHub, conta CoillectADM)
+------------------------------------------------------------------------------------------
+
+  CoillectApp (ESTE)              backend/ = API NestJS; sensor-esp32/ = firmware + simulador;
+                                  docs/ = documentação; docker-compose.yaml; .github/workflows/ = CI.
+                                  frontend/ e db/: legado do projeto original (frontend web não
+                                  é usado no MVP; db/ é a imagem do PostgreSQL do compose).
+  app-mobile-sindico              App Android do síndico (Kotlin + Jetpack Compose).
+  app-mobile-empresa              App Android da empresa coletora (Kotlin + Jetpack Compose).
+  interface-desktop-adm-coillect  App desktop do administrador (Kotlin + Compose Desktop, JVM).
+  CoillectMobileRemake            App antigo único. DESCONTINUADO: não usar.
+
+Cada repositório tem README.md (como rodar) e AGENTS.md (regras para agentes de IA).
+
+------------------------------------------------------------------------------------------
+ 3. O QUE LER DEPOIS DESTE ARQUIVO (nesta ordem)
+------------------------------------------------------------------------------------------
+
+  1. backend/README.md ............ como rodar a API, contas e dados de demonstração, testes
+  2. docs/api-apps.md ............. todas as rotas usadas pelos 3 apps, com exemplos de JSON
+  3. docs/contrato-sensor.md ...... o pedido do sensor, as respostas e a regra de disparo
+  4. sensor-esp32/README.md ....... Wokwi, ESP32 físico (ligações), sensor virtual no PC
+  5. docs/azure-a02.md ............ Blob, Queue, monitoramento, backup, alta disponibilidade e o
+                                    passo a passo do deploy na Azure (A02)
+  6. docs/deploy-cloud.md ......... variáveis de ambiente; Azure, Render e outros provedores
+  7. docs/diagramas.md ............ onde cada classe dos diagramas está no código
+  8. docs/estado-atual.md ......... o que foi reaproveitado, ajustado e criado no backend
+  9. README.md de cada app ........ telas, rotas usadas, como rodar e testar
+
+Código principal da API (backend/src/):
+  sensor/sensor-alert.service.ts ............... recebe a leitura (SensorAlertService)
+  collection-request/sensor-trigger.listener.ts  o LISTENER que decide abrir a solicitação
+  collection-request/collection-trigger.rule.ts  a regra de disparo (função pura, testada)
+  collection-request/collection-request.service  agendar, concluir, recusar (empresa)
+  notification/notification.listener.ts ........ publica na fila e consome a fila
+  cloud/message-queue.service.ts ............... fila (Azure Queue Storage ou memória)
+  cloud/blob-storage.service.ts ................ Blob Storage (ou disco, sem Azure)
+  cloud/azure-storage.client.ts ................ cliente REST do Azure Storage (Shared Key)
+  collection-request/receipt*.ts ............... comprovante da coleta (JSON no Blob)
+  cloud/telemetry.ts ........................... eventos JSON para o monitoramento
+  admin/ ....................................... rotas do desktop (cadastros, leituras, reset)
+  demo/ ........................................ dados de demonstração (seed e reset)
+
+------------------------------------------------------------------------------------------
+ 4. COMO O SISTEMA FUNCIONA
+------------------------------------------------------------------------------------------
+
+4.1 Fluxo ponta a ponta
+
+  Sensor (ESP32 / Wokwi / simulador / "Simular leitura" do app do síndico)
+    │  POST /api/sensor-alert {"sensorId":"CLT-8472-A","percentual":86,"dataHora":"..."}
+    ▼
+  API: grava a leitura, atualiza o nível do sensor
+    │  LISTENER: barril ≥ limite? já tem coleta aberta? empresa vinculada?
+    ▼
+  Cria UMA solicitação de coleta (PENDING) do barril  ──► resposta ao sensor (na hora)
+    │
+    │  publica mensagem na FILA "coillect-notificacoes" (Azure Queue Storage)
+    ▼
+  Consumidor da fila (dentro da API, lê a cada 1–5 s)
+    ├─► EMPRESA: aviso "Nova solicitação de coleta" (faixa laranja no app)
+    └─► SÍNDICO: cópia informativa ("Coleta solicitada automaticamente")
+
+  Empresa no app: "Agendar coleta" (SCHEDULED) → síndico avisado ("Coleta agendada")
+  Empresa no app: "Concluir coleta" (COMPLETED) → barril volta a 0%
+    └─► pela fila: síndico avisado + COMPROVANTE JSON gravado no Azure Blob Storage
+        (container "comprovantes-coleta"), visível no Histórico dos dois apps
+  Síndico: "Precisa de ajuda?" → pela fila → aviso "Pedido de ajuda" no app da empresa
+  Desktop: acompanha tudo, mostra as leituras ao vivo, cadastra, reinicia a demonstração e
+           mostra a fila e o Blob (aba "Nuvem (Azure)", com Pausar/Retomar o consumidor).
+
+4.2 Regras de negócio (todas testadas no CI)
+
+  - Limite padrão: 80% (configurável por barril). Abaixo do limite: nada acontece.
+  - No máximo UMA solicitação aberta (PENDING ou SCHEDULED) por barril: leituras repetidas não
+    duplicam (motivo REQUEST_ALREADY_OPEN).
+  - Depois de uma coleta concluída, o barril só abre nova solicitação quando o sensor ler um nível
+    ABAIXO do limite (motivo AWAITING_EMPTY_READING). Motivo: no Wokwi, o barril simulado continua
+    "cheio" até alguém arrastar o controle.
+  - Sem empresa vinculada ao condomínio: não cria (NO_COMPANY_LINKED). Sensor sem barril:
+    SENSOR_NOT_INSTALLED.
+  - O síndico NÃO cancela nem conclui coletas do sensor ou da empresa (HTTP 403).
+  - A empresa pode "Agendar coleta" mesmo antes do alerta (cria solicitação de origem COMPANY).
+  - Notificações são idempotentes (mensagem repetida da fila não duplica aviso).
+
+4.3 Modo Azure x modo local (a API funciona nos dois)
+
+  - Com a variável AZURE_STORAGE_CONNECTION_STRING: fila e comprovantes no Azure Storage.
+    "UseDevelopmentStorage=true" = Azurite, o emulador oficial (sem conta na Azure).
+  - Sem a variável: modo local (comprovantes na pasta backend/storage-local, fila em memória;
+    os avisos saem na hora). Útil para desenvolver sem Docker.
+  - O docker-compose.yaml já sobe o Azurite e liga a API nele: localmente você vê o mesmo
+    comportamento da nuvem.
+  - GET /api/health mostra "storage": "azure" ou "local".
+
+4.4 Dados de demonstração (criados sozinhos; "Reiniciar demonstração" volta a este estado)
+
+  Senha de todas as contas: Coillect@2025
+  Síndico ........ sindico@coillect.com (Leonardo Costa, do Residencial Aurora)
+  Empresa ........ empresa@coillect.com (EcoColeta Ambiental, atende os 3 condomínios)
+  Admin (desktop)  sem login no MVP
+
+  Condomínio           Bairro           Barril     Sensor        Nível inicial
+  Residencial Aurora   Jardim Paulista  BRL-8472   CLT-8472-A    0%   (o da demonstração)
+  Condomínio Bosque    Vila Mariana     BRL-1264   CLT-1264-B    62%
+  Edifício Átria       Pinheiros        BRL-9801   CLT-9801-C    31%
+  Capacidade dos barris: 200 L. Limite: 80%.
+
+4.5 Rotas mais usadas (base: http://localhost:3000/api ; documentação viva: /api/docs)
+
+  GET  /health                           API e banco no ar? storage azure/local?
+  POST /sensor-alert                     leitura do sensor
+  POST /auth/login | /auth/company/login logins (síndico | empresa)
+  GET  /sensor/mine | /sensor/company    barril do síndico | reservatórios da empresa
+  POST /collection-request/company/schedule      "Agendar coleta" {sensorId}
+  POST /collection-request/{id}/company-complete "Concluir coleta"
+  GET  /collection-request/{id}/receipt          comprovante (síndico)
+  GET  /collection-request/company/{id}/receipt  comprovante (empresa)
+  POST /help-request                     "Precisa de ajuda?" (síndico)
+  GET  /admin/overview | /admin/readings | /admin/cloud    desktop
+  POST /admin/demo/reset                 reinicia a demonstração
+  POST /admin/cloud/queue/pause | resume pausa/retoma o consumidor da fila (só com Azure)
+
+------------------------------------------------------------------------------------------
+ 5. RODAR LOCALMENTE (roteiro para ensinar o Allan)
+------------------------------------------------------------------------------------------
+
+5.0 Instalar (uma vez)
+  - Git; Docker Desktop (com o Docker aberto); Node.js 20 ou mais novo (para os scripts e o
+    sensor virtual); Android Studio (apps); JDK 17+ (o Android Studio já traz um; o desktop
+    também roda com ele). Opcional: Azure Storage Explorer (ver a fila e o Blob do Azurite).
+
+5.1 Clonar os repositórios numa mesma pasta
+    git clone https://github.com/CoillectADM/CoillectApp.git
+    git clone https://github.com/CoillectADM/app-mobile-sindico.git
+    git clone https://github.com/CoillectADM/app-mobile-empresa.git
+    git clone https://github.com/CoillectADM/interface-desktop-adm-coillect.git
+
+5.2 Subir banco + Azurite + API (dentro da pasta CoillectApp)
+    docker compose up -d --build db azurite backend
+  Conferir:
+    - http://localhost:3000/api/health  →  "database":"up" e "storage":"azure"
+    - http://localhost:3000/api/docs    →  Swagger com todas as rotas
+    - docker compose logs -f backend    →  logs da API (Ctrl+C sai); as linhas JSON
+      {"app":"coillect-api","evento":...} são os eventos usados no monitoramento.
+  Portas: API 3000 · PostgreSQL 5482 (no PC) · Azurite 10000 (Blob) e 10001 (Queue).
+
+5.3 Verificação automática do ciclo inteiro (em outro terminal, na pasta CoillectApp)
+    node backend/scripts/smoke-flow.mjs http://localhost:3000/api --reset
+  Deve terminar com "Fluxo completo OK" (16 verificações ✓, inclusive comprovante e fila).
+  ATENÇÃO: --reset reinicia os dados de demonstração no início e no fim (apaga solicitações,
+  notificações e leituras e volta os níveis iniciais). Não rode no meio da apresentação.
+
+5.4 Sensor — escolha uma opção
+  a) Sensor virtual no PC (mais simples):
+       node sensor-esp32/simulador-pc/sensor-virtual.mjs --api http://localhost:3000/api
+     Painel em http://localhost:4010 (encher/esvaziar o barril, enviar leitura, simular alerta).
+     Vários sensores: --sensores CLT-8472-A,CLT-1264-B,CLT-9801-C
+  b) ESP32 virtual no Wokwi (wokwi.com): o Wi-Fi "Wokwi-GUEST" só enxerga a internet, não o
+     "localhost" do PC. Opções: usar a URL da API na Azure (seção 8) ou abrir um túnel:
+       cloudflared tunnel --url http://localhost:3000
+     e usar https://<endereço>.trycloudflare.com/api/sensor-alert em COILLECT_API_URL no começo
+     de sensor-esp32/coillect_sensor/coillect_sensor.ino. Cole o .ino e o diagram.json num
+     projeto ESP32 novo no Wokwi e clique ▶. Arraste a distância do HC-SR04 (distância menor =
+     barril mais cheio; tabela em sensor-esp32/README.md). LED verde = API OK; LED vermelho =
+     alerta; botão azul = enviar agora.
+  c) No app do síndico: "Simular leitura do sensor" (− / + e bolinhas de 20%).
+  d) Uma leitura avulsa (Git Bash/Linux/macOS):
+       curl -X POST http://localhost:3000/api/sensor-alert -H "Content-Type: application/json" \
+            -d '{"sensorId":"CLT-8472-A","percentual":86}'
+     No PowerShell use Invoke-RestMethod, ou simplesmente o Swagger (/api/docs → Try it out).
+
+5.5 Apps Android (Android Studio → Open → pasta do app → aguardar o Gradle Sync → ▶ Run)
+  - No emulador, o endereço do PC é http://10.0.2.2:3000/api/ (já é o padrão do campo
+    "Servidor da API" na tela de login).
+  - Em celular físico: http://<IP-do-PC-na-rede>:3000/api/ (mesma Wi-Fi; liberar a porta 3000
+    no firewall do Windows) ou a URL da Azure.
+  - Síndico: sindico@coillect.com / Coillect@2025 · Empresa: empresa@coillect.com / Coillect@2025
+  - Sem API? Botão "Explorar demonstração" (tudo simulado no aparelho).
+  - Instalar sem compilar: GitHub → repositório do app → Actions → "Android CI" (execução verde
+    mais recente da main) → Artifacts → baixar o APK de debug. Os artefatos expiram em 7 dias;
+    se sumiu, "Run workflow" na mesma tela gera outro.
+  - Os dois apps podem ficar instalados no mesmo emulador/celular.
+
+5.6 App desktop (pasta interface-desktop-adm-coillect)
+    Windows:  gradlew.bat :app:run        Linux/macOS: ./gradlew :app:run
+  Conectar em http://localhost:3000/api/ . Abas: Visão geral, Leituras do sensor, Cadastros,
+  Nuvem (Azure). Botão "Reiniciar demonstração" no topo.
+
+5.7 Ver a fila e o Blob do Azurite
+  - Aba "Nuvem (Azure)" do desktop, ou
+  - Azure Storage Explorer → Emulator & Attached → Storage Accounts → (Emulator - Default Ports)
+    → Queues "coillect-notificacoes" e Blob Containers "comprovantes-coleta".
+
+5.8 Parar
+    docker compose down        (para tudo; os dados do banco ficam guardados)
+    docker compose down -v     (para e APAGA o banco e os volumes)
+
+5.9 Problemas comuns
+  - "port is already allocated": algo já usa a porta 3000/5482/10000; feche ou troque a porta.
+  - API não sobe: docker compose logs backend; o banco pode demorar alguns segundos (a API
+    tenta reconectar sozinha).
+  - App não conecta: no emulador use 10.0.2.2; no celular, IP do PC + firewall liberado.
+  - Wokwi não chega na API: localhost não funciona lá; use túnel (5.4 b) ou a URL da Azure.
+
+------------------------------------------------------------------------------------------
+ 6. TESTES
+------------------------------------------------------------------------------------------
+
+6.1 O que o GitHub Actions já roda a cada push (veja a aba Actions de cada repositório)
+  CoillectApp/backend.yml ..... build; testes unitários (npm run test:mvp); fluxo e2e completo
+                                contra PostgreSQL; e2e da fila e do Blob contra o Azurite;
+                                imagem Docker rodando o roteiro (sem Azure e com Azurite).
+  CoillectApp/sensor-esp32.yml  firmware testado no PC com hardware simulado; compilação para o
+                                ESP32; firmware e sensor virtual contra a API real.
+  CoillectApp/imagem-api.yml .. publica a imagem ghcr.io/coillectadm/coillect-api a cada merge.
+  apps Android ................ assembleDebug + testes unitários (gera o APK como artefato).
+  desktop ..................... build + testes.
+
+6.2 Rodar os testes na máquina
+  API (pasta CoillectApp/backend):
+    npm ci
+    npm run test:mvp                       # unitários, não precisam de banco
+    # e2e: precisa do banco do compose (docker compose up -d db azurite)
+    #   Git Bash:   DATABASE_PORT=5482 npm run test:e2e:mvp
+    #   PowerShell: $env:DATABASE_PORT="5482"; npm run test:e2e:mvp
+    # e2e da Azure (Azurite):  + AZURE_STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true
+    #   npm run test:e2e:azure
+    (os e2e reiniciam os dados de demonstração do banco usado)
+  Sensor virtual:  node --test sensor-esp32/simulador-pc/sensor-virtual.test.mjs
+  Apps Android:    gradlew.bat :app:testDebugUnitTest   (./gradlew no Linux/macOS)
+  Desktop:         gradlew.bat :app:build
+
+6.3 Checklist manual antes da apresentação (faça ensaiando o roteiro da seção 7)
+  [ ] /api/health "up"; smoke-flow OK; "Reiniciar demonstração" feito
+  [ ] apps logados (síndico e empresa) apontando para a MESMA API; desktop conectado
+  [ ] sensor escolhido funcionando (Wokwi, simulador ou "Simular leitura")
+  [ ] portal da Azure aberto no Storage account (Navegador de armazenamento) e no Dashboard
+  [ ] plano B pronto (seção 7.3)
+
+------------------------------------------------------------------------------------------
+ 7. ROTEIRO DA DEMONSTRAÇÃO EM AULA (~10 min)
+------------------------------------------------------------------------------------------
+
+7.1 Preparação (30 min antes)
+  API no ar (Azure ou local) → "Reiniciar demonstração" no desktop → abrir app do síndico, app
+  da empresa e desktop → sensor pronto → portal da Azure aberto.
+
+7.2 Passo a passo
+  1. Mostre a arquitetura (desenho da seção 4.1 ou docs/azure-a02.md §1).
+  2. Desktop → Cadastros: condomínio Residencial Aurora ligado ao síndico Leonardo e à empresa
+     EcoColeta; barril BRL-8472 com o sensor CLT-8472-A.
+  3. Suba o nível do sensor CLT-8472-A: 40% → 60% (desktop → "Leituras do sensor" mostra cada
+     envio; app do síndico mostra o barril enchendo; "Operação normal").
+  4. Chegue a 80% ou mais (ex.: 86%; no app do síndico, 4 ou 5 bolinhas): a API abre a
+     solicitação na hora; a fila entrega os avisos em poucos segundos (os apps atualizam
+     sozinhos a cada 5 s):
+     app da empresa mostra a faixa laranja "Nova solicitação de coleta"; app do síndico mostra
+     "Coleta solicitada à empresa" e a notificação. Explique: o síndico só é informado.
+  5. Mande outra leitura alta: NÃO duplica (uma solicitação aberta por barril).
+  6. Empresa: selecionar Residencial Aurora → "Agendar coleta" → síndico vê "Coleta agendada".
+  7. Empresa: "Concluir coleta" → barril volta a 0% → Histórico → "Ver comprovante" (nos dois
+     apps). No portal: Storage account → Navegador de armazenamento → Contêineres de blobs →
+     comprovantes-coleta → abrir o JSON.
+  8. Síndico: "Precisa de ajuda?" → mensagem → aparece como aviso no app da empresa.
+  9. (A02, desacoplamento) Desktop → Nuvem → "Pausar consumidor" → mande 90% no sensor
+     CLT-1264-B (Bosque) → a solicitação nasce, mas o aviso NÃO chega → no portal, Filas →
+     coillect-notificacoes mostra a mensagem → "Retomar consumidor" → o aviso chega em segundos.
+ 10. (A02, monitoramento) Dashboard "Coillect — Operação" no portal: nível dos barris, coletas,
+     fila, comprovantes, saúde da API (docs/azure-a02.md §4).
+ 11. Se perguntarem: depois da coleta, o mesmo barril só reabre solicitação quando o sensor ler
+     o barril vazio (AWAITING_EMPTY_READING) — evita coleta duplicada.
+
+7.3 Plano B
+  - Internet/Azure fora: tudo local (docker compose com Azurite + sensor virtual + emulador).
+  - Storage da Azure fora com a API no ar: a API processa os avisos localmente (fallback) e
+    registra "fila_indisponivel" — o fluxo continua.
+  - Sem API: botão "Explorar demonstração" nos apps e "Modo demonstração" no desktop.
+
+------------------------------------------------------------------------------------------
+ 8. DEPLOYS
+------------------------------------------------------------------------------------------
+
+8.1 O que vai para onde
+  API (container) ......... Azure App Service (Linux, plano B1)
+                            imagem ghcr.io/coillectadm/coillect-api:latest
+  Banco ................... Azure Database for PostgreSQL – Flexible Server (Burstable B1ms)
+  Fila + comprovantes ..... Azure Storage Account (Queue + Blob)
+  Monitoramento ........... Log Analytics + Application Insights + Dashboard do portal
+  Apps .................... APK instalado nos celulares/emulador; desktop no PC da apresentação
+  Sensor .................. Wokwi ou ESP32 físico apontando para a URL pública da API
+
+8.2 Opção A — Azure (recomendada para a A02)
+  Siga docs/azure-a02.md §7. Resumo:
+   0. GitHub → Packages → coillect-api → Package settings → Change visibility → Public
+      (uma vez; sem isso o App Service não consegue baixar a imagem).
+   1. Grupo de recursos rg-coillect (Brazil South; se a assinatura bloquear, East US).
+   2. Storage Account → copiar a "Cadeia de conexão" (segredo!). Ativar soft delete e versões.
+   3. PostgreSQL Flexible Server B1ms (acesso público + "permitir serviços do Azure").
+   4. App Service (Contêiner, Linux, B1) com a imagem ghcr.io/coillectadm/coillect-api:latest.
+      Variáveis: WEBSITES_PORT=3000, PORT=3000, DATABASE_URL, DATABASE_SSL=true, JWT_SECRET,
+      SEED_DEMO=true, AZURE_STORAGE_CONNECTION_STRING. Always On ligado. Health check /api/health.
+   5. Log Analytics + Configurações de diagnóstico do App Service + Application Insights (teste
+      de disponibilidade de /api/health) + consultas KQL fixadas no Dashboard.
+   6. Testar: node backend/scripts/smoke-flow.mjs https://<app>.azurewebsites.net/api --reset
+  Assinatura: Azure for Students (US$ 100 de crédito por 12 meses, sem cartão). Custos: o
+  App Service B1 é o principal (por volta de US$ 13/mês, varia com a região; confira na
+  calculadora de preços da Azure); o PostgreSQL B1ms entra na oferta gratuita de 12 meses; o
+  Storage custa centavos. Depois da avaliação, apague o grupo de recursos para parar a cobrança.
+
+8.3 Opção B — Render (gratuito, alternativa)
+  Render → New → Blueprint → repositório CoillectApp (usa render.yaml: API + PostgreSQL grátis).
+  Para usar o Azure Storage mesmo assim: cadastrar AZURE_STORAGE_CONNECTION_STRING em Environment.
+  Limites: a API "dorme" após 15 min (≈1 min para acordar; os apps esperam até 60 s) e o
+  PostgreSQL gratuito expira em 30 dias. Detalhes em docs/deploy-cloud.md.
+
+8.4 Depois do deploy, apontar todo mundo para a URL pública
+  Apps e desktop: campo "Servidor da API" = https://<app>.azurewebsites.net/api/
+  Firmware/Wokwi: COILLECT_API_URL = https://<app>.azurewebsites.net/api/sensor-alert
+  Sensor virtual: --api https://<app>.azurewebsites.net/api
+
+8.5 Publicar uma versão nova da API
+  Merge na main → workflow "Imagem da API (GitHub Container Registry)" publica :latest → no
+  App Service, "Reiniciar": ao reiniciar ele baixa a imagem de novo (confira em Fluxo de log).
+
+------------------------------------------------------------------------------------------
+ 9. ATIVIDADE A02 — COMPUTAÇÃO EM NUVEM II (entrega e apresentação: 16/11/2026)
+------------------------------------------------------------------------------------------
+
+Entregas: documento padrão ABNT + apresentação do protótipo. Mapa dos itens:
+
+  1. Infraestrutura, onde é publicado, recursos .. docs/azure-a02.md §1 (diagrama + tabela).
+     Prints: grupo de recursos com todos os recursos; App Service rodando.
+  2. Storage account – Blob Storage .............. IMPLEMENTADO: comprovante JSON de cada coleta
+     no container "comprovantes-coleta" (§2). Prints: container com os JSON; app mostrando
+     o comprovante.
+  3. Table OU Queue Storage ...................... IMPLEMENTADO: QUEUE (fila coillect-notificacoes
+     + poison queue). Justificativa da escolha e boas práticas em §3. Prints: fila com mensagem
+     (consumidor pausado) e vazia depois.
+  4. Monitoramento e dashboards .................. Eventos JSON implementados; configurar Log
+     Analytics, Application Insights e o Dashboard pelo §4 (consultas KQL prontas). Prints do
+     dashboard e do teste de disponibilidade.
+  5. Política de backup .......................... DESCREVER (§5): PostgreSQL (backup automático,
+     PITR, retenção 7–35 dias), Blob (soft delete, versões, LRS/GRS), código/imagem no GitHub.
+  6. Alta disponibilidade ........................ §6: o que já está no código (API sem estado,
+     health 503, fila com nova tentativa/idempotência/poison, fallback, reconexão) e a
+     configuração de produção (2+ instâncias, zonas, HA do PostgreSQL, ZRS/GRS) com custos.
+
+Use o docs/azure-a02.md como base do capítulo do documento ABNT (adapte o texto, cite a
+documentação oficial da Microsoft nas referências).
+
+------------------------------------------------------------------------------------------
+ 10. ESTADO ATUAL (10/11/2026) E LIMITES CONHECIDOS
+------------------------------------------------------------------------------------------
+
+Na main dos repositórios (CI verde):
+  - API completa do MVP + Azure Storage (Blob + Queue) + monitoramento + docs da A02.
+  - Firmware do ESP32 (Wokwi e placa) + sensor virtual no PC + testes.
+  - App do síndico e app da empresa com as telas dos mockups; desktop com abas.
+NÃO verificado por quem escreveu este guia (fazer junto com o Allan):
+  - Deploy real na Azure (Storage Account, App Service, PostgreSQL, Log Analytics).
+  - Rodar no wokwi.com e no ESP32 físico (o firmware compila e passa nos testes do CI).
+  - Apps em emulador/celular de verdade (compilam e passam nos testes do CI).
+Fora do escopo por decisão do Allan: segurança (login do admin, CORS, permissões finas).
+
+------------------------------------------------------------------------------------------
+ 11. GLOSSÁRIO RÁPIDO
+------------------------------------------------------------------------------------------
+
+  Listener ............ trecho da API que "escuta" cada leitura e decide abrir a solicitação.
+  Fila (Queue) ........ lista de mensagens: quem publica não espera quem processa.
+  Consumidor .......... quem lê a fila; aqui, um laço dentro da própria API.
+  Poison queue ........ fila para mensagens que falharam várias vezes (para análise).
+  Idempotência ........ processar a mesma mensagem duas vezes dá o mesmo resultado.
+  Blob ................ arquivo guardado no Azure Storage (aqui: o comprovante JSON).
+  Container ........... "pasta" de blobs (aqui: comprovantes-coleta).
+  Azurite ............. emulador oficial do Azure Storage, roda no PC/Docker sem conta.
+  Connection string ... texto com o nome e a chave da Storage Account (é segredo).
+  App Service ......... serviço da Azure que roda a API (aqui, a partir de um contêiner).
+  GHCR ................ GitHub Container Registry, onde fica a imagem Docker da API.
+  Health check ........ /api/health: a plataforma usa para saber se a API está saudável.
+  KQL ................. linguagem das consultas do Log Analytics (gráficos do dashboard).
+  PITR ................ restauração do banco para um ponto no tempo.
+  Wokwi ............... simulador online de ESP32 (o "ESP32 virtual").
+==========================================================================================
