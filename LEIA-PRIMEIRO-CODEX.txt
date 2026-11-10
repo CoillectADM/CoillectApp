@@ -90,6 +90,7 @@ Código principal da API (backend/src/):
   collection-request/sensor-trigger.listener.ts  o LISTENER que decide abrir a solicitação
   collection-request/collection-trigger.rule.ts  a regra de disparo (função pura, testada)
   collection-request/collection-request.service  agendar, concluir, recusar (empresa)
+  collection-request/barrel-lock.ts ............ um barril por vez (vários clientes juntos)
   notification/notification.listener.ts ........ publica na fila e consome a fila
   cloud/message-queue.service.ts ............... fila (Azure Queue Storage ou memória)
   cloud/blob-storage.service.ts ................ Blob Storage (ou disco, sem Azure)
@@ -231,14 +232,43 @@ Código principal da API (backend/src/):
 5.5 Apps Android (Android Studio → Open → pasta do app → aguardar o Gradle Sync → ▶ Run)
   - No emulador, o endereço do PC é http://10.0.2.2:3000/api/ (já é o padrão do campo
     "Servidor da API" na tela de login).
-  - Em celular físico: http://<IP-do-PC-na-rede>:3000/api/ (mesma Wi-Fi; liberar a porta 3000
-    no firewall do Windows) ou a URL da Azure.
   - Síndico: sindico@coillect.com / Coillect@2025 · Empresa: empresa@coillect.com / Coillect@2025
   - Sem API? Botão "Explorar demonstração" (tudo simulado no aparelho).
-  - Instalar sem compilar: GitHub → repositório do app → Actions → "Android CI" (execução verde
-    mais recente da main) → Artifacts → baixar o APK de debug. Os artefatos expiram em 7 dias;
-    se sumiu, "Run workflow" na mesma tela gera outro.
   - Os dois apps podem ficar instalados no mesmo emulador/celular.
+
+5.5.1 Celulares de verdade (síndico e empresa ao mesmo tempo)
+  Como funciona: os apps NÃO falam entre si. Cada celular (e o desktop, o sensor e o simulador)
+  conversa com a MESMA API pelo endereço digitado em "Servidor da API"; os apps atualizam a tela
+  a cada 5 s. A API é a única fonte da verdade: o que a empresa faz aparece no celular do síndico
+  na próxima atualização, e vice-versa.
+  a) Instalar o APK no celular (uma vez por app):
+     - GitHub → repositório do app → Releases → "demo" → coillect-sindico.apk ou
+       coillect-empresa.apk (o CI atualiza a cada merge na main; os repositórios são privados:
+       entre no GitHub no celular ou baixe no PC e passe o arquivo). Permita "instalar apps
+       desta fonte".
+     - Ou Android Studio com o celular no cabo USB (Opções do desenvolvedor → Depuração USB)
+       → ▶ Run.
+     - O APK usa uma chave de debug fixa: versões novas instalam por cima (sem desinstalar).
+  b) Escolher onde a API roda (todos os clientes usam o MESMO endereço):
+     - PC na mesma Wi-Fi dos celulares. No PC (pasta CoillectApp), com a API no ar:
+         node backend/scripts/endereco-celular.mjs
+       Ele mostra o IP certo (ignora adaptadores do WSL/Docker) e o comando do firewall do
+       Windows (PowerShell como administrador, uma vez):
+         New-NetFirewallRule -DisplayName "Coillect API 3000" -Direction Inbound -Protocol TCP
+           -LocalPort 3000 -Action Allow -Profile Any        (tudo numa linha)
+     - Wi-Fi que isola aparelhos (comum em faculdade): hotspot de um celular para o PC e os
+       outros celulares, ou túnel público: cloudflared tunnel --url http://localhost:3000
+     - Nuvem: a URL do App Service (seção 8). É a opção mais simples para a aula: funciona em
+       qualquer rede, inclusive 4G, e o Wokwi usa o mesmo endereço.
+  c) No app: digite só o IP ou o domínio (ex.: 192.168.0.15 ou app-coillect.azurewebsites.net);
+     o app completa http(s)://, a porta 3000 (para IP) e o /api. Toque em "Testar conexão":
+     ele chama GET /api/health e diz se achou a API ou o que conferir (mesma rede, firewall,
+     endereço). Depois "Entrar". O app lembra o servidor e o e-mail; o menu lateral mostra o
+     servidor em uso.
+  d) Mais de um cliente ao mesmo tempo é seguro: leituras simultâneas do mesmo barril (Wokwi,
+     simulador, "Simular leitura") e "Agendar coleta" chegando juntos abrem UMA solicitação só
+     (a API processa um barril por vez; há teste e2e para isso). Na apresentação, use UMA fonte
+     de leitura por sensor para o nível não "pular" entre valores diferentes.
 
 5.6 App desktop (pasta interface-desktop-adm-coillect)
     Windows:  gradlew.bat :app:run        Linux/macOS: ./gradlew :app:run
@@ -258,7 +288,9 @@ Código principal da API (backend/src/):
   - "port is already allocated": algo já usa a porta 3000/5482/10000; feche ou troque a porta.
   - API não sobe: docker compose logs backend; o banco pode demorar alguns segundos (a API
     tenta reconectar sozinha).
-  - App não conecta: no emulador use 10.0.2.2; no celular, IP do PC + firewall liberado.
+  - App não conecta: use "Testar conexão" na tela de login. No emulador use 10.0.2.2; no
+    celular, o IP mostrado por node backend/scripts/endereco-celular.mjs + firewall liberado
+    (ou túnel / Azure, seção 5.5.1).
   - Wokwi não chega na API: localhost não funciona lá; use túnel (5.4 b) ou a URL da Azure.
 
 ------------------------------------------------------------------------------------------
@@ -272,7 +304,8 @@ Código principal da API (backend/src/):
   CoillectApp/sensor-esp32.yml  firmware testado no PC com hardware simulado; compilação para o
                                 ESP32; firmware e sensor virtual contra a API real.
   CoillectApp/imagem-api.yml .. publica a imagem ghcr.io/coillectadm/coillect-api a cada merge.
-  apps Android ................ assembleDebug + testes unitários (gera o APK como artefato).
+  apps Android ................ assembleDebug + testes unitários; na main, publica o APK na
+                                release "demo" (link fixo para instalar no celular).
   desktop ..................... build + testes.
 
 6.2 Rodar os testes na máquina
@@ -291,7 +324,8 @@ Código principal da API (backend/src/):
 
 6.3 Checklist manual antes da apresentação (faça ensaiando o roteiro da seção 7)
   [ ] /api/health "up"; smoke-flow OK; "Reiniciar demonstração" feito
-  [ ] apps logados (síndico e empresa) apontando para a MESMA API; desktop conectado
+  [ ] apps logados (síndico e empresa) apontando para a MESMA API ("Testar conexão" verde nos
+      dois celulares); desktop conectado na mesma API
   [ ] sensor escolhido funcionando (Wokwi, simulador ou "Simular leitura")
   [ ] portal da Azure aberto no Storage account (Navegador de armazenamento) e no Dashboard
   [ ] plano B pronto (seção 7.3)
