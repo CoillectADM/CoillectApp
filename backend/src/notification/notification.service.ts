@@ -5,7 +5,9 @@ import { CollectionRequest } from '../collection-request/collection-request.enti
 import { Notification, NotificationType } from './notification.entity';
 import { NotificationView, toNotificationView } from './notification.view';
 import {
+  HelpRequestText,
   empresaNotificationText,
+  helpNotificationTexts,
   sindicoNotificationText,
 } from './notification.text';
 
@@ -27,41 +29,103 @@ export class NotificationService {
   async notificarSindico(
     request: CollectionRequest,
     type: NotificationType,
+    dedupeKey?: string,
   ): Promise<Notification | null> {
     if (!request.user) return null;
     const { title, message } = sindicoNotificationText(request, type);
-    return this.notifications.save(
-      this.notifications.create({
+    return this.saveOnce(
+      {
         audience: 'SINDICO',
-        user: { id: request.user.id },
+        user: { id: request.user.id } as Notification['user'],
         company: null,
-        collectionRequest: { id: request.id },
+        collectionRequest: { id: request.id } as CollectionRequest,
         type,
         title,
         message,
         read: false,
-      }),
+      },
+      dedupeKey,
     );
   }
 
   async notificarEmpresa(
     request: CollectionRequest,
     type: NotificationType,
+    dedupeKey?: string,
   ): Promise<Notification | null> {
     if (!request.company) return null;
     const { title, message } = empresaNotificationText(request, type);
-    return this.notifications.save(
-      this.notifications.create({
+    return this.saveOnce(
+      {
         audience: 'EMPRESA',
         user: null,
-        company: { id: request.company.id },
-        collectionRequest: { id: request.id },
+        company: { id: request.company.id } as Notification['company'],
+        collectionRequest: { id: request.id } as CollectionRequest,
         type,
         title,
         message,
         read: false,
-      }),
+      },
+      dedupeKey,
     );
+  }
+
+  /**
+   * "Precisa de ajuda?": aviso para a empresa coletora do condomínio e
+   * confirmação para o síndico. Não cria solicitação de coleta.
+   */
+  async notificarAjuda(
+    input: HelpRequestText & { sindicoId: number; companyId: number },
+    dedupeKey?: string,
+  ): Promise<void> {
+    const texts = helpNotificationTexts(input);
+    await this.saveOnce(
+      {
+        audience: 'EMPRESA',
+        user: null,
+        company: { id: input.companyId } as Notification['company'],
+        collectionRequest: null,
+        type: 'HELP_REQUESTED',
+        ...texts.empresa,
+        read: false,
+      },
+      dedupeKey ? `${dedupeKey}:EMPRESA` : undefined,
+    );
+    await this.saveOnce(
+      {
+        audience: 'SINDICO',
+        user: { id: input.sindicoId } as Notification['user'],
+        company: null,
+        collectionRequest: null,
+        type: 'HELP_REQUESTED',
+        ...texts.sindico,
+        read: false,
+      },
+      dedupeKey ? `${dedupeKey}:SINDICO` : undefined,
+    );
+  }
+
+  /** Grava uma vez só por chave de idempotência (mensagem repetida da fila). */
+  private async saveOnce(
+    data: Partial<Notification>,
+    dedupeKey?: string,
+  ): Promise<Notification> {
+    if (dedupeKey) {
+      const existing = await this.notifications.findOne({ where: { dedupeKey } });
+      if (existing) return existing;
+    }
+    try {
+      return await this.notifications.save(
+        this.notifications.create({ ...data, dedupeKey: dedupeKey ?? null }),
+      );
+    } catch (error) {
+      // 23505 = unique_violation: outra instância gravou a mesma mensagem agora.
+      if (dedupeKey && (error as { code?: string })?.code === '23505') {
+        const existing = await this.notifications.findOne({ where: { dedupeKey } });
+        if (existing) return existing;
+      }
+      throw error;
+    }
   }
 
   async list(

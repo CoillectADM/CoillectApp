@@ -16,10 +16,18 @@ A API roda em qualquer serviço que execute um container Docker e ofereça Postg
 | `DEMO_PASSWORD` | não | `Coillect@2025` | Senha das contas de demonstração (e dos cadastros do admin sem senha) |
 | `SENSOR_ONLINE_MINUTES` | não | `30` | Minutos sem leitura até o sensor aparecer como inativo (`online: false`) |
 | `APP_TIMEZONE` | não | `America/Sao_Paulo` | Fuso usado nas datas das notificações |
+| `AZURE_STORAGE_CONNECTION_STRING` | não (sim para a A02) | — | Storage Account da Azure: comprovantes no **Blob** e notificações pela **Queue**. Sem ela: modo local (disco + memória). `UseDevelopmentStorage=true` = emulador Azurite |
+| `AZURE_STORAGE_CONTAINER` / `AZURE_STORAGE_QUEUE` | não | `comprovantes-coleta` / `coillect-notificacoes` | Nomes do container e da fila (a fila de falhas é `<fila>-poison`) |
+| `QUEUE_POLL_MS` / `QUEUE_POLL_MAX_MS` | não | `1000` / `5000` | Intervalo da leitura da fila (cresce até o máximo quando ela está vazia) |
+| `LOG_EVENTS` | não | `true` | Uma linha JSON por evento de negócio no log (base dos dashboards) |
 
-Verificação: `GET /api/health` deve responder `"database": "up"`.
+Verificação: `GET /api/health` deve responder `"database": "up"` (HTTP 503 se o banco estiver fora) e `"storage": "azure"` quando a Storage Account estiver configurada.
 
-## Opção 1 — Render (gratuito, usado como exemplo)
+## Opção recomendada para a A02 — Azure
+
+App Service (container da imagem `ghcr.io/coillectadm/coillect-api`), PostgreSQL Flexible Server, Storage Account (Blob + Queue), Log Analytics e Application Insights. Passo a passo, monitoramento, backup e alta disponibilidade em **[azure-a02.md](azure-a02.md)**.
+
+## Opção 1 — Render (gratuito, alternativa)
 
 O arquivo `render.yaml` na raiz cria a API e um PostgreSQL.
 
@@ -34,11 +42,12 @@ O arquivo `render.yaml` na raiz cria a API e um PostgreSQL.
 
 Limites do plano gratuito do Render:
 
-- A API **dorme após 15 min sem tráfego** e leva cerca de **1 min** para acordar. Os apps usam tempo limite de 10 s: antes da apresentação, abra `/api/health` no navegador e espere responder.
+- A API **dorme após 15 min sem tráfego** e leva cerca de **1 min** para acordar. Os apps esperam até 60 s pela resposta, mas antes da apresentação abra `/api/health` no navegador e espere responder.
+- Para usar a Storage Account da Azure com a API no Render, cadastre `AZURE_STORAGE_CONNECTION_STRING` em *Environment* no painel do Render.
 - O **PostgreSQL gratuito expira 30 dias após a criação**. Crie perto da data da apresentação, ou use outro PostgreSQL e informe a `DATABASE_URL` dele.
 - Arquivos gravados no disco (ícones enviados por upload) se perdem a cada reinício.
 
-## Opção 2 — outro provedor (Railway, Azure, Fly.io, VM)
+## Opção 2 — outro provedor (Railway, Fly.io, VM)
 
 1. Crie um PostgreSQL gerenciado e copie a URL de conexão.
 2. Crie um serviço a partir do Dockerfile `backend/Dockerfile` (contexto `backend/`).
@@ -48,9 +57,9 @@ Limites do plano gratuito do Render:
 ## Local, igual à cloud
 
 ```bash
-docker compose up -d --build db backend
-# API: http://localhost:3000/api/docs
+docker compose up -d --build db azurite backend
+# API: http://localhost:3000/api/docs  ·  Azurite (Blob 10000, Queue 10001) no lugar da Storage Account
 node backend/scripts/smoke-flow.mjs http://localhost:3000/api --reset
 ```
 
-O CI (`.github/workflows/backend.yml`) faz o mesmo a cada push: build da imagem, container com `PORT=8080` e `DATABASE_URL`, e o roteiro completo.
+O CI (`.github/workflows/backend.yml`) faz o mesmo a cada push: build da imagem, container com `PORT=8080` e `DATABASE_URL`, o roteiro completo sem Azure e de novo com Blob + Queue no Azurite; e os testes e2e da fila e do Blob contra o Azurite.

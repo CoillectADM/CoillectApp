@@ -72,6 +72,13 @@ export class CollectionRequest {
   @Column({ type: 'timestamptz', nullable: true })
   completedAt: Date | null;
 
+  /**
+   * Nome do comprovante no Blob Storage (container "comprovantes-coleta"),
+   * gravado quando a coleta é concluída. Ex.: 2026/11/10/coleta-12-20261110T061500Z.json
+   */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  receiptBlob: string | null;
+
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 

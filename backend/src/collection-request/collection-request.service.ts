@@ -306,7 +306,8 @@ export class CollectionRequestService {
   // Auxiliares
   // ---------------------------------------------------------------
 
-  private async findForCompany(
+  /** Solicitação que pertence a esta empresa (404 se não for). */
+  async findForCompany(
     requestId: number,
     companyId: number,
   ): Promise<CollectionRequest> {
@@ -321,7 +322,8 @@ export class CollectionRequestService {
     return req;
   }
 
-  private async findForUser(
+  /** Solicitação que pertence a este síndico (404 se não for). */
+  async findForUser(
     requestId: number,
     userId: number,
   ): Promise<CollectionRequest> {

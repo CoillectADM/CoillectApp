@@ -97,3 +97,51 @@ export function empresaNotificationText(
       return sindicoNotificationText(request, type);
   }
 }
+
+/** Assuntos do "Precisa de ajuda?" (app do síndico). */
+export const HELP_TOPICS = ['COLETA', 'SENSOR', 'CADASTRO', 'OUTRO'] as const;
+export type HelpTopic = (typeof HELP_TOPICS)[number];
+
+const HELP_TOPIC_LABELS: Record<HelpTopic, string> = {
+  COLETA: 'Coleta',
+  SENSOR: 'Sensor',
+  CADASTRO: 'Cadastro',
+  OUTRO: 'Outro assunto',
+};
+
+export function helpTopicLabel(topic: string | null | undefined): string {
+  return HELP_TOPIC_LABELS[topic as HelpTopic] ?? HELP_TOPIC_LABELS.OUTRO;
+}
+
+function clip(text: string, max: number): string {
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
+export interface HelpRequestText {
+  sindico: string;
+  condominio: string;
+  empresa: string;
+  assunto: string;
+  mensagem: string;
+}
+
+/** Textos do pedido de ajuda: aviso para a empresa e confirmação para o síndico. */
+export function helpNotificationTexts(input: HelpRequestText): {
+  empresa: NotificationText;
+  sindico: NotificationText;
+} {
+  const topic = helpTopicLabel(input.assunto);
+  return {
+    empresa: {
+      title: clip(`Pedido de ajuda • ${input.condominio}`, 120),
+      message: clip(`${input.sindico} (${topic}): ${input.mensagem}`, 300),
+    },
+    sindico: {
+      title: 'Pedido de ajuda enviado',
+      message: clip(
+        `Sua mensagem foi enviada para ${input.empresa} (assunto: ${topic}). Acompanhe a resposta com a empresa coletora.`,
+        300,
+      ),
+    },
+  };
+}

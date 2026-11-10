@@ -86,6 +86,71 @@ jobs:
         if: failure()
         run: python3 .github/scripts/report_errors.py "$RUNNER_TEMP"/*.log
 
+  azure-storage:
+    name: Azure Storage (Blob + Queue) contra o Azurite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coillect_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d coillect_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      # Emulador oficial do Azure Storage (Blob 10000, Queue 10001, Table 10002).
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+          - 10001:10001
+          - 10002:10002
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: backend
+        run: npm ci 2>&1 | tee "$RUNNER_TEMP/1-npm-ci.log"
+
+      - name: Fila (Queue Storage) e comprovantes (Blob Storage) no Azurite
+        working-directory: backend
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: "5432"
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: coillect_test
+          JWT_SECRET: ci-only-secret
+          AZURE_STORAGE_CONNECTION_STRING: UseDevelopmentStorage=true
+          QUEUE_POLL_MS: "200"
+          QUEUE_POLL_MAX_MS: "1000"
+        run: npm run test:e2e:azure 2>&1 | tee "$RUNNER_TEMP/2-e2e-azure.log"
+
+      - name: Resumo dos testes
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/2-e2e-azure.log"
+          [ -f "$f" ] || exit 0
+          grep -E "^(Test Suites|Tests):" "$f" | while read -r line; do
+            echo "::notice title=azure-storage::$line"
+          done || true
+
+      - name: Resumo dos erros
+        if: failure()
+        run: python3 .github/scripts/report_errors.py "$RUNNER_TEMP"/*.log
+
   docker:
     name: Imagem Docker como na cloud (PORT + DATABASE_URL)
     runs-on: ubuntu-latest
@@ -124,6 +189,25 @@ jobs:
         run: |
           node backend/scripts/smoke-flow.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/3-smoke.log"
           echo "::notice title=smoke-flow::$(grep -c '✓' "$RUNNER_TEMP/3-smoke.log") verificações OK contra o container (PORT=8080, DATABASE_URL)"
+
+      - name: Mesma imagem com Azure Storage (Azurite no lugar da Storage Account)
+        run: |
+          docker rm -f coillect-api
+          docker run -d --name coillect-azurite --network coillect mcr.microsoft.com/azure-storage/azurite
+          docker run -d --name coillect-api --network coillect -p 8080:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://coillect:coillect@coillect-db:5432/coillect \
+            -e JWT_SECRET=ci-only-secret \
+            -e "AZURE_STORAGE_CONNECTION_STRING=UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://coillect-azurite" \
+            coillect-api
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health > "$RUNNER_TEMP/health.json"; then break; fi
+            sleep 3
+          done
+          cat "$RUNNER_TEMP/health.json"; echo
+          grep -q '"storage":"azure"' "$RUNNER_TEMP/health.json"
+          node backend/scripts/smoke-flow.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/4-smoke-azure.log"
+          echo "::notice title=smoke-flow (Azure Storage)::$(grep -c '✓' "$RUNNER_TEMP/4-smoke-azure.log") verificações OK com Blob + Queue no Azurite"
 
       - name: Resumo dos erros
         if: failure()

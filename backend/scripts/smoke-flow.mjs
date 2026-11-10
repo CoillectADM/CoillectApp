@@ -5,7 +5,11 @@
  * (POST /sensor-alert { sensorId, percentual, dataHora }):
  *   leitura abaixo do limite → leitura no limite → solicitação do barril para a
  *   empresa + aviso da empresa → cópia/notificação do síndico (que não pode
- *   alterar a coleta) → empresa agenda e conclui → barril volta a 0%.
+ *   alterar a coleta) → empresa agenda e conclui → barril volta a 0% →
+ *   comprovante da coleta no Blob Storage.
+ *
+ * Com o Azure Storage ligado, os avisos passam pela fila (Queue Storage) e
+ * chegam alguns segundos depois: o roteiro espera até 30 s por eles.
  *
  * Uso:  node scripts/smoke-flow.mjs <URL_DA_API> --reset
  *       ex.: node scripts/smoke-flow.mjs https://coillect-api.onrender.com/api --reset
@@ -35,6 +39,17 @@ function check(condition, message, detail) {
     process.exit(1);
   }
   console.log(`✓ ${step}. ${message}`);
+}
+
+/** Tenta de novo a cada 0,5 s até a condição valer (a fila do Azure é assíncrona). */
+async function waitFor(probe, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const value = await probe();
+    if (value) return value;
+    if (Date.now() > deadline) return null;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 async function call(method, path, { token, body, expect = [200, 201] } = {}) {
@@ -67,6 +82,8 @@ console.log(`API: ${base}`);
 
 const health = await call('GET', 'health');
 check(health?.data?.database === 'up', 'API no ar e banco conectado', health);
+const storage = health.data.storage || 'local';
+console.log(`  armazenamento: ${storage === 'azure' ? 'Azure Storage (Blob + Queue)' : 'local (sem Azure)'}`);
 
 await call('POST', 'admin/demo/reset');
 check(true, 'dados de demonstração reiniciados');
@@ -88,12 +105,18 @@ check(again.data.collection.triggered === false && again.data.collection.request
 const companyActive = await call('GET', 'collection-request/company/active', { token: empresa.access_token });
 check(companyActive.data.some((r) => r.id === created.id), 'empresa recebeu a solicitação', companyActive.data);
 
-const notices = await call('GET', 'notifications/company', { token: empresa.access_token });
-check(notices.data[0]?.requestId === created.id && /85% de capacidade/.test(notices.data[0]?.message), `empresa recebeu o aviso: "${notices.data[0]?.message}"`, notices.data);
+const notice = await waitFor(async () => {
+  const list = await call('GET', 'notifications/company', { token: empresa.access_token });
+  return list.data.find((n) => n.requestId === created.id && n.type === 'COLLECTION_REQUESTED');
+});
+check(notice && /85% de capacidade/.test(notice.message), `empresa recebeu o aviso: "${notice?.message}"`, notice);
 
 const copy = await call('GET', 'collection-request/my-active', { token: sindico.access_token });
-const notifications = await call('GET', 'notifications/mine', { token: sindico.access_token });
-check(copy.data?.id === created.id && notifications.data[0]?.requestId === created.id, 'síndico recebeu a cópia/notificação da mesma solicitação', { copy: copy.data, notifications: notifications.data });
+const notification = await waitFor(async () => {
+  const list = await call('GET', 'notifications/mine', { token: sindico.access_token });
+  return list.data.find((n) => n.requestId === created.id);
+});
+check(copy.data?.id === created.id && notification, 'síndico recebeu a cópia/notificação da mesma solicitação', { copy: copy.data, notification });
 
 await call('POST', `collection-request/${created.id}/cancel`, { token: sindico.access_token, expect: [403] });
 check(true, 'síndico não consegue cancelar a coleta gerada pelo sensor (403)');
@@ -109,6 +132,15 @@ check(done.data.status === 'COMPLETED', 'empresa concluiu a coleta', done.data);
 
 const barrel = await call('GET', 'sensor/mine', { token: sindico.access_token });
 check(barrel.data.level === 0 && barrel.data.openRequest === null, 'barril voltou a 0% e não há coleta aberta', barrel.data);
+
+const receipt = await waitFor(async () => {
+  const res = await call('GET', `collection-request/${created.id}/receipt`, { token: sindico.access_token, expect: [200, 404] });
+  return res?.data?.receipt ? res.data : null;
+});
+check(receipt?.receipt?.solicitacaoId === created.id, `comprovante ${receipt?.receipt?.protocolo} gravado em ${receipt?.storage?.provider}: ${receipt?.storage?.container}/${receipt?.storage?.blob}`, receipt);
+
+const cloud = await call('GET', 'admin/cloud');
+check(cloud.data.mode === storage, `fila ${cloud.data.queue.name} (${cloud.data.queue.provider}): ${cloud.data.queue.processed} mensagens processadas, ${cloud.data.queue.failed} falhas desde que a API subiu`, cloud.data);
 
 await call('POST', 'admin/demo/reset');
 console.log('\nFluxo completo OK. Dados de demonstração reiniciados para a apresentação.');

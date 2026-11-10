@@ -1,0 +1,48 @@
+name: Imagem da API (GitHub Container Registry)
+
+# Publica a imagem Docker da API a cada merge na main. É a imagem que o
+# Azure App Service (Web App for Containers) baixa: ghcr.io/coillectadm/coillect-api
+# Passo único depois da 1ª publicação: Packages → coillect-api → Package settings
+# → Change visibility → Public (o Azure baixa a imagem sem senha).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/imagem-api.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publicar:
+    name: Publicar ghcr.io/coillectadm/coillect-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/coillectadm/coillect-api:latest
+            ghcr.io/coillectadm/coillect-api:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=API Coillect (NestJS): sensor, coletas e Azure Storage
+
+      - name: Resumo
+        run: |
+          echo "::notice title=Imagem publicada::ghcr.io/coillectadm/coillect-api:latest e :${GITHUB_SHA}"

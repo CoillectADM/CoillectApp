@@ -7,6 +7,7 @@ import { CollectionRequestRepository } from './repository/collection-request.rep
 import { CollectionRequestService } from './collection-request.service';
 import { CollectionRequestController } from './collection-request.controller';
 import { SensorTriggerListener } from './sensor-trigger.listener';
+import { ReceiptService } from './receipt.service';
 import { UserModule } from 'src/user/user.module';
 import { CompanyModule } from 'src/company/company.module';
 
@@ -21,7 +22,8 @@ import { CompanyModule } from 'src/company/company.module';
     CollectionRequestService,
     CollectionRequestRepository,
     SensorTriggerListener,
+    ReceiptService,
   ],
-  exports: [CollectionRequestService],
+  exports: [CollectionRequestService, ReceiptService],
 })
 export class CollectionRequestModule {}

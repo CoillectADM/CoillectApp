@@ -7,7 +7,7 @@ Base: `<URL_DA_API>/api/` (ex.: `http://localhost:3000/api/`, ou a URL da cloud)
 - Rotas marcadas com **Bearer** exigem o cabeçalho `Authorization: Bearer <access_token>` do login correspondente.
 - Os apps atualizam por consulta periódica (a cada 5 s). `updatedAt` na solicitação permite detectar mudanças.
 
-Legenda da última coluna: **Sim** = o app já usa (PR #1 de cada app); **Próxima** = já existe na API, falta tela no app.
+Legenda da última coluna: **Sim** = o app usa (telas do mockup, PR #2 de cada app); **—** = existe na API, o app não precisa.
 
 ## Quem faz o quê
 
@@ -23,9 +23,12 @@ Legenda da última coluna: **Sim** = o app já usa (PR #1 de cada app); **Próxi
 | Login | `POST auth/login` `{ email, password }` | — | Sim |
 | Barril do condomínio | `GET sensor/mine` → Barril ou `null` | Bearer | Sim |
 | Cópia da solicitação em aberto | `GET collection-request/my-active` → Solicitação ou `null` | Bearer | Sim |
-| Notificações (cópias da solicitação) | `GET notifications/mine` (`?unread=true`, `?limit=50`) | Bearer | Próxima |
-| Marcar como lida | `POST notifications/{id}/read` · `POST notifications/read-all` | Bearer | Próxima |
-| Histórico | `GET collection-request/my-history` | Bearer | Próxima |
+| Notificações (cópias da solicitação e pedidos de ajuda) | `GET notifications/mine` (`?unread=true`, `?limit=50`) | Bearer | Sim |
+| Marcar como lida | `POST notifications/{id}/read` · `POST notifications/read-all` | Bearer | Sim |
+| Histórico | `GET collection-request/my-history` | Bearer | Sim |
+| Comprovante da coleta concluída (Blob Storage) | `GET collection-request/{id}/receipt` | Bearer | Sim |
+| "Precisa de ajuda?" | `POST help-request` `{ message, topic? }` (`COLETA`, `SENSOR`, `CADASTRO`, `OUTRO`) | Bearer | Sim |
+| "Simular leitura do sensor" (demonstração) | `POST sensor-alert` `{ sensorId, percentual }` (mesmo contrato do ESP32) | — | Sim |
 
 ## app-mobile-empresa
 
@@ -34,13 +37,14 @@ Legenda da última coluna: **Sim** = o app já usa (PR #1 de cada app); **Próxi
 | Login | `POST auth/company/login` `{ email, password }` | — | Sim |
 | Solicitações em aberto | `GET collection-request/company/active` → `PENDING` e `SCHEDULED` | Bearer | Sim |
 | Reservatórios monitorados (barris dos clientes) | `GET sensor/company` | Bearer | Sim |
-| Avisos ("Nova solicitação de coleta") | `GET notifications/company` (`?unread=true`, `?limit=50`) | Bearer | Próxima |
-| Marcar aviso como lido | `POST notifications/company/{id}/read` · `POST notifications/company/read-all` | Bearer | Próxima |
-| **Agendar coleta** do reservatório selecionado | `POST collection-request/company/schedule` `{ sensorId, scheduledDate? }` | Bearer | Próxima |
-| Iniciar etapa de coleta de uma solicitação | `POST collection-request/{id}/accept` `{}` ou `{ scheduledDate }` → `SCHEDULED` | Bearer | Sim |
+| Avisos ("Nova solicitação de coleta", "Pedido de ajuda") | `GET notifications/company` (`?unread=true`, `?limit=50`) | Bearer | Sim |
+| Marcar aviso como lido | `POST notifications/company/{id}/read` · `POST notifications/company/read-all` | Bearer | Sim |
+| **Agendar coleta** do reservatório selecionado | `POST collection-request/company/schedule` `{ sensorId, scheduledDate? }` | Bearer | Sim |
+| Iniciar etapa de coleta de uma solicitação | `POST collection-request/{id}/accept` `{}` ou `{ scheduledDate }` → `SCHEDULED` | Bearer | — (o "Agendar coleta" faz o mesmo) |
 | Concluir coleta | `POST collection-request/{id}/company-complete` `{}` → `COMPLETED`, barril volta a 0% | Bearer | Sim |
-| Recusar | `POST collection-request/{id}/refuse` → `REFUSED` | Bearer | Próxima (opcional) |
-| Histórico | `GET collection-request/company/history` | Bearer | Próxima |
+| Recusar | `POST collection-request/{id}/refuse` → `REFUSED` | Bearer | Sim |
+| Histórico | `GET collection-request/company/history` | Bearer | Sim |
+| Comprovante da coleta (Blob Storage) | `GET collection-request/company/{id}/receipt` | Bearer | Sim |
 
 "Agendar coleta" serve para os dois casos do documento de funcionalidades:
 - o barril já tem solicitação do sensor (`PENDING`): ela é aceita e passa a `SCHEDULED`;
@@ -54,13 +58,15 @@ Sem login no MVP, como a interface desktop atual espera.
 | Ação | Rota | No app |
 |---|---|---|
 | Visão geral (contadores, barris, últimas 50 solicitações) | `GET admin/overview` | Sim |
-| Leituras recebidas dos sensores | `GET admin/readings` (`?sensorId=CLT-8472-A&limit=50`) | Próxima |
-| Síndicos | `GET admin/sindicos` · `POST admin/sindicos` | Próxima |
-| Empresas coletoras | `GET admin/companies` · `POST admin/companies` | Próxima |
-| Condomínios (com síndico e empresa) | `GET admin/condominiums` · `POST admin/condominiums` · `PATCH admin/condominiums/{id}` | Próxima |
-| Barris | `GET admin/barrels` · `POST admin/barrels` · `PATCH admin/barrels/{id}` | Próxima |
-| Sensores (ex.: cadastrar o ESP32) | `GET admin/sensors` · `POST admin/sensors` · `PATCH admin/sensors/{sensorId}` | Próxima |
-| Reiniciar a demonstração | `POST admin/demo/reset` | Próxima |
+| Leituras recebidas dos sensores | `GET admin/readings` (`?sensorId=CLT-8472-A&limit=50`) | Sim |
+| Síndicos | `GET admin/sindicos` · `POST admin/sindicos` | Sim |
+| Empresas coletoras | `GET admin/companies` · `POST admin/companies` | Sim |
+| Condomínios (com síndico e empresa) | `GET admin/condominiums` · `POST admin/condominiums` · `PATCH admin/condominiums/{id}` | Sim (lista e cadastro) |
+| Barris | `GET admin/barrels` · `POST admin/barrels` · `PATCH admin/barrels/{id}` | Sim (lista e cadastro) |
+| Sensores (ex.: cadastrar o ESP32) | `GET admin/sensors` · `POST admin/sensors` · `PATCH admin/sensors/{sensorId}` | Sim (lista e cadastro) |
+| Reiniciar a demonstração | `POST admin/demo/reset` | Sim |
+| Nuvem: Blob (comprovantes) e Queue (fila) | `GET admin/cloud` | Sim |
+| Pausar/retomar o consumidor da fila (só com Azure) | `POST admin/cloud/queue/pause` · `POST admin/cloud/queue/resume` | Sim |
 
 Ordem de cadastro e corpos:
 
@@ -83,7 +89,7 @@ PATCH admin/sensors/CLT-8472-A  { "barrelId": 2 }
 
 | Rota | Uso |
 |---|---|
-| `GET health` | API no ar e banco conectado (`data.database = "up"`); usado pela cloud |
+| `GET health` | API no ar e banco conectado (`data.database = "up"`, HTTP 503 se o banco cair); `data.storage` = `azure` ou `local`; usado pela cloud |
 | `POST sensor-alert` | Leitura do sensor: ver [contrato-sensor.md](contrato-sensor.md). `POST sensor/readings` é o mesmo |
 | `GET sensor/{sensorId}/status` | Estado atual de um sensor (útil para o sensor virtual) |
 
@@ -137,10 +143,43 @@ PATCH admin/sensors/CLT-8472-A  { "barrelId": 2 }
 | Empresa concluiu | "Coleta concluída" | — |
 | Empresa recusou | "Solicitação recusada" | — |
 | Síndico cancelou (só fluxo antigo) | "Solicitação cancelada" | "Solicitação cancelada" |
+| Síndico tocou em "Precisa de ajuda?" (`HELP_REQUESTED`, sem solicitação: `requestId: null`) | "Pedido de ajuda enviado" | "Pedido de ajuda • Residencial Aurora" com a mensagem |
 
-## O que falta nos apps para usar tudo
+As notificações passam pela **fila** (Azure Queue Storage, ou em memória sem Azure): com o Azure elas chegam 1–2 s depois da solicitação. Ver [azure-a02.md](azure-a02.md).
 
-- **Síndico**: lista de notificações e histórico, no visual do mockup.
-- **Empresa**: faixa de aviso, "Agendar coleta" com data no reservatório selecionado, histórico.
-- **Desktop**: cadastros, feed de leituras (mostra a comunicação do sensor ao vivo) e "Reiniciar demonstração".
-- **Todos**: aumentar o tempo limite de leitura HTTP (hoje 10 s) se a API ficar num plano gratuito que "dorme"; ver [deploy-cloud.md](deploy-cloud.md).
+**Comprovante** (`…/receipt`), gravado no Blob Storage na conclusão da coleta (`receiptAvailable: true` na solicitação):
+
+```json
+{
+  "requestId": 12,
+  "receipt": {
+    "tipo": "comprovante-de-coleta", "versao": 1, "protocolo": "COL-000012", "solicitacaoId": 12, "origem": "SENSOR",
+    "condominio": { "nome": "Residencial Aurora", "endereco": "Rua das Acácias, 120 - São Paulo/SP", "bairro": "Jardim Paulista" },
+    "sindico": { "nome": "Leonardo Costa", "email": "sindico@coillect.com" },
+    "empresaColetora": { "nome": "EcoColeta Ambiental", "cnpj": "11222333000181" },
+    "barril": { "codigo": "BRL-8472", "capacidadeLitros": 200, "limiteAlertaPercentual": 80 },
+    "sensor": "CLT-8472-A", "nivelNoAlertaPercentual": 86, "volumeEstimadoLitros": 172,
+    "solicitadaEm": "…", "agendadaPara": "…", "concluidaEm": "…", "emitidoEm": "…",
+    "armazenamento": { "provedor": "Azure Blob Storage", "container": "comprovantes-coleta", "blob": "2026/11/16/coleta-12-20261116T143015Z.json" }
+  },
+  "storage": { "mode": "azure", "provider": "Azure Blob Storage", "container": "comprovantes-coleta", "blob": "2026/11/16/coleta-12-20261116T143015Z.json" }
+}
+```
+
+Antes da conclusão (ou nos primeiros segundos depois dela, enquanto a fila processa) a rota responde 404.
+
+**Nuvem** (`GET admin/cloud`):
+
+```json
+{
+  "mode": "azure",
+  "blob": { "provider": "Azure Blob Storage", "account": "stcoillect", "container": "comprovantes-coleta", "count": 3,
+            "recent": [{ "name": "2026/11/16/coleta-12-….json", "size": 812, "lastModified": "…" }], "error": null },
+  "queue": { "provider": "Azure Queue Storage", "name": "coillect-notificacoes", "poisonQueue": "coillect-notificacoes-poison",
+             "waiting": 0, "published": 9, "processed": 9, "failed": 0, "poisoned": 0, "fallbacks": 0, "paused": false, "lastError": null }
+}
+```
+
+## Tempo limite nos apps
+
+Os três apps esperam até 15 s para conectar e 60 s pela resposta: uma API em plano que "dorme" (Render gratuito, App Service sem Always On) leva até ~1 min para acordar. Ver [deploy-cloud.md](deploy-cloud.md).
