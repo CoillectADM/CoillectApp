@@ -5,44 +5,38 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Condominium } from './condominium.entity';
+import { Barrel } from './barrel.entity';
 
 /**
- * Sensor/barril. O campo `code` é o identificador que o dispositivo envia
- * como `sensorId` (ex.: "COI-DEMO-01"), seja ele físico (ESP32) ou virtual.
+ * Sensor — classe `Sensor` do diagrama de classes da API.
+ * `code` é o identificador que o dispositivo envia como `sensorId`
+ * (ex.: "CLT-8472-A"), seja ele o ESP32 físico ou o sensor virtual.
+ * Limite, capacidade e vínculos ficam no barril em que ele está instalado.
  */
 @Entity('sensors')
 export class Sensor {
   @PrimaryGeneratedColumn()
   id: number;
 
+  /** codigo */
   @Column({ length: 60, unique: true })
   code: string;
 
-  @ManyToOne(() => Condominium, (condominium) => condominium.sensors, {
+  /** instalado em → Barrel (nulo enquanto o sensor não foi instalado). */
+  @ManyToOne(() => Barrel, (barrel) => barrel.sensors, {
     nullable: true,
     eager: true,
     onDelete: 'SET NULL',
   })
-  condominium: Condominium | null;
+  barrel: Barrel | null;
 
-  /** Percentual (0–100) a partir do qual a solicitação de coleta é criada. */
-  @Column({ type: 'int', default: 80 })
-  threshold: number;
-
-  /** Capacidade do barril em litros (informativo). */
-  @Column({ type: 'int', nullable: true })
-  capacityLiters: number | null;
-
-  /** Último nível recebido, em percentual (0–100). */
+  /** percentualAtual: último nível recebido (0–100). */
   @Column({ type: 'int', default: 0 })
   level: number;
 
+  /** ultimaLeitura */
   @Column({ type: 'timestamptz', nullable: true })
   lastReadingAt: Date | null;
-
-  @Column({ type: 'timestamptz', nullable: true })
-  lastCollectionAt: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

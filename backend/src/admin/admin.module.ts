@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Condominium } from '../sensor/entities/condominium.entity';
+import { Barrel } from '../sensor/entities/barrel.entity';
 import { Sensor } from '../sensor/entities/sensor.entity';
 import { SensorReading } from '../sensor/entities/sensor-reading.entity';
 import { CollectionRequest } from '../collection-request/collection-request.entity';
@@ -16,6 +17,7 @@ import { AdminController } from './admin.controller';
   imports: [
     TypeOrmModule.forFeature([
       Condominium,
+      Barrel,
       Sensor,
       SensorReading,
       CollectionRequest,

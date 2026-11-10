@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CollectionRequest } from './collection-request.entity';
+import { Barrel } from 'src/sensor/entities/barrel.entity';
+import { Sensor } from 'src/sensor/entities/sensor.entity';
 import { CollectionRequestRepository } from './repository/collection-request.repository';
 import { CollectionRequestService } from './collection-request.service';
 import { CollectionRequestController } from './collection-request.controller';
@@ -10,7 +12,7 @@ import { CompanyModule } from 'src/company/company.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([CollectionRequest]),
+    TypeOrmModule.forFeature([CollectionRequest, Barrel, Sensor]),
     UserModule,
     CompanyModule,
   ],

@@ -1,9 +1,11 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { In } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
 import { CollectionRequestRepository } from './repository/collection-request.repository';
 import { CreateCollectionRequestDto } from '../collection-request/dto/create-collection-request.dto';
 import { UserService } from 'src/user/user.service';
@@ -21,6 +23,9 @@ import {
   CollectionRequestStatusChangedEvent,
 } from 'src/events/domain-events';
 import { Sensor } from 'src/sensor/entities/sensor.entity';
+import { Barrel } from 'src/sensor/entities/barrel.entity';
+import { condominiumOf } from 'src/sensor/sensor-links';
+import { ScheduleCollectionDto } from './dto/schedule-collection.dto';
 
 const CLOSED_STATUSES: CollectionRequestStatus[] = [
   'COMPLETED',
@@ -35,6 +40,8 @@ export class CollectionRequestService {
     private readonly userService: UserService,
     private readonly companyService: CompanyService,
     private readonly events: DomainEventsService,
+    @InjectRepository(Barrel) private readonly barrels: Repository<Barrel>,
+    @InjectRepository(Sensor) private readonly sensors: Repository<Sensor>,
   ) {}
 
   // ---------------------------------------------------------------
@@ -56,7 +63,7 @@ export class CollectionRequestService {
       throw new NotFoundException('Empresa não encontrada');
     }
 
-    const request = this.collectionRepo.create({
+    return this.createRequest({
       user,
       company,
       status: 'PENDING',
@@ -66,30 +73,24 @@ export class CollectionRequestService {
       companyCnpjSnapshot: company.cnpj,
       userAddressSnapshot: null,
     });
-
-    const saved = await this.collectionRepo.save(request);
-    const full = await this.findById(saved.id);
-    await this.events.emit<CollectionRequestCreatedEvent>(
-      COLLECTION_REQUEST_CREATED,
-      { request: full },
-    );
-    return full;
   }
 
   /**
    * Fluxo do MVP: chamado pelo listener quando a leitura do sensor atinge o limite.
-   * Cria a solicitação PRINCIPAL para a empresa do condomínio; o síndico recebe
-   * uma cópia/notificação vinculada a esta mesma solicitação (sem duplicar a coleta).
-   * O sensor deve vir carregado com condominium.company e condominium.sindico.
+   * Cria a solicitação PRINCIPAL para a empresa do condomínio, ligada ao barril e
+   * ao sensor; o síndico recebe uma cópia/notificação vinculada a esta mesma
+   * solicitação (sem duplicar a coleta).
+   * O sensor deve vir carregado com barrel.condominium.company e .sindico.
    */
   async createFromSensor(
     sensor: Sensor,
     level: number,
   ): Promise<CollectionRequest> {
-    const condominium = sensor.condominium;
-    const request = this.collectionRepo.create({
+    const condominium = condominiumOf(sensor);
+    return this.createRequest({
       user: condominium?.sindico ?? null,
       company: condominium?.company ?? null,
+      barrel: sensor.barrel ? ({ id: sensor.barrel.id } as Barrel) : null,
       sensor: { id: sensor.id } as Sensor,
       status: 'PENDING',
       origin: 'SENSOR',
@@ -99,8 +100,67 @@ export class CollectionRequestService {
       companyCnpjSnapshot: condominium?.company?.cnpj ?? null,
       userAddressSnapshot: condominium?.address ?? null,
     });
+  }
 
-    const saved = await this.collectionRepo.save(request);
+  /**
+   * "Agendar coleta" no app da empresa, para um barril específico:
+   *  - se o barril já tem solicitação PENDING desta empresa, ela é aceita (→ SCHEDULED);
+   *  - se já está SCHEDULED, só a data é atualizada (quando enviada);
+   *  - se não há solicitação aberta, cria uma nova (origem COMPANY) já SCHEDULED.
+   * O síndico recebe a notificação; nunca há duas coletas abertas para o mesmo barril.
+   */
+  async scheduleByCompany(
+    companyId: number,
+    dto: ScheduleCollectionDto,
+  ): Promise<CollectionRequest> {
+    const barrel = await this.findBarrelForCompany(companyId, dto);
+    const scheduledDate = dto.scheduledDate
+      ? new Date(dto.scheduledDate)
+      : undefined;
+
+    const open = await this.findOpenForBarrel(barrel.id);
+    if (open) {
+      if (open.company?.id !== companyId) {
+        throw new ConflictException(
+          `O barril ${barrel.code} já tem a solicitação #${open.id} aberta com outra empresa.`,
+        );
+      }
+      if (open.status === 'PENDING') {
+        return this.transition(open, 'SCHEDULED', {
+          scheduledDate: scheduledDate ?? new Date(),
+        });
+      }
+      return scheduledDate
+        ? this.transition(open, 'SCHEDULED', { scheduledDate })
+        : open;
+    }
+
+    const condominium = barrel.condominium;
+    const sensor = await this.sensors.findOne({
+      where: { barrel: { id: barrel.id } },
+      order: { id: 'ASC' },
+    });
+    return this.createRequest({
+      user: condominium?.sindico ?? null,
+      company: condominium?.company ?? null,
+      barrel: { id: barrel.id } as Barrel,
+      sensor: sensor ? ({ id: sensor.id } as Sensor) : null,
+      status: 'SCHEDULED',
+      origin: 'COMPANY',
+      levelAtRequest: sensor?.level ?? null,
+      scheduledDate: scheduledDate ?? new Date(),
+      userCpfSnapshot: null,
+      companyCnpjSnapshot: condominium?.company?.cnpj ?? null,
+      userAddressSnapshot: condominium?.address ?? null,
+    });
+  }
+
+  private async createRequest(
+    data: Partial<CollectionRequest>,
+  ): Promise<CollectionRequest> {
+    const saved = await this.collectionRepo.save(
+      this.collectionRepo.create(data),
+    );
     const full = await this.findById(saved.id);
     await this.events.emit<CollectionRequestCreatedEvent>(
       COLLECTION_REQUEST_CREATED,
@@ -121,10 +181,10 @@ export class CollectionRequestService {
     return request;
   }
 
-  /** Solicitação PENDING/SCHEDULED do sensor, se houver. */
-  async findOpenForSensor(sensorId: number): Promise<CollectionRequest | null> {
+  /** Solicitação PENDING/SCHEDULED do barril, se houver (no máximo uma por barril). */
+  async findOpenForBarrel(barrelId: number): Promise<CollectionRequest | null> {
     return this.collectionRepo.findOne({
-      where: { sensor: { id: sensorId }, status: In(OPEN_REQUEST_STATUSES) },
+      where: { barrel: { id: barrelId }, status: In(OPEN_REQUEST_STATUSES) },
       order: { requestedAt: 'DESC' },
     });
   }
@@ -217,7 +277,9 @@ export class CollectionRequestService {
   }
 
   // ---------------------------------------------------------------
-  // Ações do usuário (fluxo antigo, mantidas por compatibilidade)
+  // Ações do usuário (fluxo antigo, mantidas para o frontend web).
+  // O síndico só altera solicitações MANUAIS criadas por ele; as geradas pelo
+  // sensor ou agendadas pela empresa ele apenas acompanha.
   // ---------------------------------------------------------------
 
   async cancelForUser(
@@ -225,6 +287,8 @@ export class CollectionRequestService {
     userId: number,
   ): Promise<CollectionRequest> {
     const req = await this.findForUser(requestId, userId);
+    this.assertSindicoCanChange(req, 'cancelar');
+    this.assertStatus(req, OPEN_REQUEST_STATUSES, 'cancelar');
     return this.transition(req, 'CANCELLED', { scheduledDate: null });
   }
 
@@ -233,6 +297,8 @@ export class CollectionRequestService {
     userId: number,
   ): Promise<CollectionRequest> {
     const req = await this.findForUser(requestId, userId);
+    this.assertSindicoCanChange(req, 'concluir');
+    this.assertStatus(req, OPEN_REQUEST_STATUSES, 'concluir');
     return this.transition(req, 'COMPLETED', { completedAt: new Date() });
   }
 
@@ -268,6 +334,44 @@ export class CollectionRequestService {
       );
     }
     return req;
+  }
+
+  /** Barril do sensorId/barrelId informado, desde que o condomínio seja cliente da empresa. */
+  private async findBarrelForCompany(
+    companyId: number,
+    dto: ScheduleCollectionDto,
+  ): Promise<Barrel> {
+    let barrel: Barrel | null = null;
+    if (dto.sensorId !== undefined) {
+      const sensor = await this.sensors.findOne({
+        where: { code: dto.sensorId.trim() },
+      });
+      barrel = sensor?.barrel ?? null;
+    } else if (dto.barrelId !== undefined) {
+      barrel = await this.barrels.findOne({ where: { id: dto.barrelId } });
+    }
+    if (barrel) {
+      barrel = await this.barrels.findOne({
+        where: { id: barrel.id },
+        relations: { condominium: { company: true, sindico: true } },
+      });
+    }
+    if (!barrel || barrel.condominium?.company?.id !== companyId) {
+      throw new NotFoundException(
+        'Barril não encontrado entre os condomínios clientes desta empresa',
+      );
+    }
+    return barrel;
+  }
+
+  private assertSindicoCanChange(req: CollectionRequest, action: string): void {
+    const origin = req.origin ?? 'MANUAL';
+    if (origin !== 'MANUAL') {
+      const by = origin === 'SENSOR' ? 'pelo sensor' : 'pela empresa coletora';
+      throw new ForbiddenException(
+        `Não é possível ${action}: a solicitação #${req.id} foi gerada ${by}. O síndico apenas acompanha; quem altera é a empresa coletora.`,
+      );
+    }
   }
 
   private assertStatus(

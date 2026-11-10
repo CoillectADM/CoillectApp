@@ -9,6 +9,7 @@ import {
 import { User } from 'src/user/entities/user/user.entity';
 import { Company } from 'src/company/entities/company/company.entity';
 import { Sensor } from 'src/sensor/entities/sensor.entity';
+import { Barrel } from 'src/sensor/entities/barrel.entity';
 
 export type CollectionRequestStatus =
   | 'PENDING'
@@ -17,10 +18,14 @@ export type CollectionRequestStatus =
   | 'CANCELLED'
   | 'COMPLETED';
 
-/** SENSOR = criada pelo listener ao atingir o limite; MANUAL = fluxo antigo (POST /collection-request). */
-export type CollectionRequestOrigin = 'SENSOR' | 'MANUAL';
+/**
+ * SENSOR  = criada pelo listener quando o barril atinge o limite;
+ * COMPANY = a empresa agendou a coleta do barril antes do alerta ("Agendar coleta");
+ * MANUAL  = fluxo antigo (POST /collection-request, frontend web).
+ */
+export type CollectionRequestOrigin = 'SENSOR' | 'COMPANY' | 'MANUAL';
 
-/** Status que mantêm a solicitação "aberta" (impede duplicar a coleta do mesmo sensor). */
+/** Status que mantêm a solicitação "aberta" (impede duplicar a coleta do mesmo barril). */
 export const OPEN_REQUEST_STATUSES: CollectionRequestStatus[] = [
   'PENDING',
   'SCHEDULED',
@@ -31,15 +36,19 @@ export class CollectionRequest {
   @PrimaryGeneratedColumn()
   id: number;
 
-  /** Síndico do condomínio: recebe a cópia/notificação da solicitação. */
+  /** Síndico do condomínio: recebe a cópia/notificação da solicitação (só acompanha). */
   @ManyToOne(() => User, { eager: true })
   user: User;
 
-  /** Empresa coletora: recebe a solicitação principal. */
+  /** Empresa coletora ("destinada a"): recebe a solicitação principal. */
   @ManyToOne(() => Company, { eager: true })
   company: Company;
 
-  /** Sensor que disparou a solicitação (nulo nas solicitações manuais antigas). */
+  /** Barril que precisa ser coletado (nulo nas solicitações manuais antigas). */
+  @ManyToOne(() => Barrel, { eager: true, nullable: true, onDelete: 'SET NULL' })
+  barrel: Barrel | null;
+
+  /** Sensor "associado ao alerta" (nulo nas solicitações manuais antigas). */
   @ManyToOne(() => Sensor, { eager: true, nullable: true, onDelete: 'SET NULL' })
   sensor: Sensor | null;
 

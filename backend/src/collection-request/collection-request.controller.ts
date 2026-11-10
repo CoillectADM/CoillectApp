@@ -12,6 +12,7 @@ import {
 import { CollectionRequestService } from './collection-request.service';
 import { CreateCollectionRequestDto } from './dto/create-collection-request.dto';
 import { AcceptCollectionRequestDto } from './dto/accept-collection-request.dto';
+import { ScheduleCollectionDto } from './dto/schedule-collection.dto';
 import { JwtUserAuthGuard } from 'src/auth/guards/jwt-user.guard';
 import { JwtCompanyAuthGuard } from 'src/auth/guards/jwt-company.guard';
 import { APIResponse } from 'src/utils/response/response';
@@ -76,7 +77,7 @@ export class CollectionRequestController {
   @Post()
   @ApiOperation({
     summary:
-      '[Fluxo antigo] Usuário cria uma solicitação manual escolhendo a empresa',
+      '[Fluxo antigo, frontend web] Usuário cria uma solicitação manual escolhendo a empresa',
   })
   async create(
     @Req() req: any,
@@ -95,7 +96,10 @@ export class CollectionRequestController {
 
   @UseGuards(JwtUserAuthGuard)
   @Post(':id/cancel')
-  @ApiOperation({ summary: '[Fluxo antigo] Usuário cancela a solicitação' })
+  @ApiOperation({
+    summary:
+      '[Fluxo antigo] Usuário cancela a sua solicitação MANUAL (403 nas geradas pelo sensor ou pela empresa)',
+  })
   @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
   async cancelForUser(
     @Req() req: any,
@@ -111,7 +115,8 @@ export class CollectionRequestController {
   @UseGuards(JwtUserAuthGuard)
   @Post(':id/complete')
   @ApiOperation({
-    summary: '[Fluxo antigo] Usuário confirma que a coleta foi realizada',
+    summary:
+      '[Fluxo antigo] Usuário confirma a coleta da sua solicitação MANUAL (403 nas geradas pelo sensor ou pela empresa)',
   })
   @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
   async completeForUser(
@@ -150,6 +155,23 @@ export class CollectionRequestController {
       req.user.sub,
     );
     return ok(list.map(toRequestView), 'Histórico de solicitações da empresa');
+  }
+
+  @UseGuards(JwtCompanyAuthGuard)
+  @Post('company/schedule')
+  @ApiOperation({
+    summary:
+      'Empresa: "Agendar coleta" de um barril (aceita a solicitação aberta ou cria uma nova já agendada)',
+  })
+  async scheduleByCompany(
+    @Req() req: any,
+    @Body() dto: ScheduleCollectionDto,
+  ): Promise<APIResponse> {
+    const request = await this.collectionRequestService.scheduleByCompany(
+      req.user.sub,
+      dto,
+    );
+    return ok(toRequestView(request), 'Coleta agendada', 201);
   }
 
   @UseGuards(JwtCompanyAuthGuard)

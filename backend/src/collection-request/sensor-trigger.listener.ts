@@ -7,6 +7,7 @@ import {
 } from '../events/domain-events';
 import { CollectionRequestService } from './collection-request.service';
 import { evaluateCollectionTrigger } from './collection-trigger.rule';
+import { condominiumOf, thresholdOf } from '../sensor/sensor-links';
 
 /**
  * LISTENER do sensor: escuta cada leitura recebida pela API e, quando a regra
@@ -32,18 +33,26 @@ export class SensorTriggerListener implements OnModuleInit {
     sensor,
     reading,
   }: SensorReadingReceivedEvent): Promise<CollectionTriggerResult> {
-    const open = await this.requests.findOpenForSensor(sensor.id);
+    const barrel = sensor.barrel ?? null;
+    const threshold = thresholdOf(sensor);
+    const open = barrel ? await this.requests.findOpenForBarrel(barrel.id) : null;
     const decision = evaluateCollectionTrigger({
       level: reading.level,
-      threshold: sensor.threshold,
+      threshold,
+      hasBarrel: !!barrel,
       hasOpenRequest: !!open,
-      hasCompany: !!sensor.condominium?.company,
+      hasCompany: !!condominiumOf(sensor)?.company,
     });
 
     if (!decision.create) {
       if (decision.reason === 'NO_COMPANY_LINKED') {
         this.logger.warn(
-          `Sensor ${sensor.code} atingiu ${reading.level}%, mas o condomínio não tem empresa coletora vinculada.`,
+          `Sensor ${sensor.code} atingiu ${reading.level}%, mas o condomínio do barril não tem empresa coletora vinculada.`,
+        );
+      }
+      if (decision.reason === 'SENSOR_NOT_INSTALLED') {
+        this.logger.warn(
+          `Sensor ${sensor.code} atingiu ${reading.level}%, mas não está instalado em nenhum barril.`,
         );
       }
       return {
@@ -56,7 +65,7 @@ export class SensorTriggerListener implements OnModuleInit {
 
     const request = await this.requests.createFromSensor(sensor, reading.level);
     this.logger.log(
-      `Sensor ${sensor.code} atingiu ${reading.level}% (limite ${sensor.threshold}%): solicitação #${request.id} criada.`,
+      `Sensor ${sensor.code} atingiu ${reading.level}% (limite ${threshold}% do barril ${barrel?.code}): solicitação #${request.id} criada.`,
     );
     return {
       kind: 'collection-trigger',

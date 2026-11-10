@@ -8,20 +8,26 @@ import {
 } from 'class-validator';
 
 export class CreateCondominiumDto {
-  @ApiProperty({ example: 'Condomínio Demonstração' })
+  @ApiProperty({ example: 'Residencial Aurora' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
   name: string;
 
-  @ApiPropertyOptional({ example: 'Rua das Flores, 120 - São Paulo/SP' })
+  @ApiPropertyOptional({ example: 'Rua das Acácias, 120 - São Paulo/SP' })
   @IsOptional()
   @IsString()
   @MaxLength(200)
   address?: string;
 
+  @ApiPropertyOptional({ description: 'Bairro', example: 'Jardim Paulista' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  neighborhood?: string;
+
   @ApiPropertyOptional({
-    description: 'ID do usuário síndico (GET /api/admin/users). null desvincula.',
+    description: 'ID do síndico (GET /api/admin/sindicos). null desvincula.',
     example: 1,
   })
   @IsOptional()
@@ -38,18 +44,24 @@ export class CreateCondominiumDto {
 }
 
 export class UpdateCondominiumDto {
-  @ApiPropertyOptional({ example: 'Condomínio Demonstração' })
+  @ApiPropertyOptional({ example: 'Residencial Aurora' })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'Rua das Flores, 120 - São Paulo/SP' })
+  @ApiPropertyOptional({ example: 'Rua das Acácias, 120 - São Paulo/SP' })
   @IsOptional()
   @IsString()
   @MaxLength(200)
   address?: string;
+
+  @ApiPropertyOptional({ description: 'Bairro', example: 'Jardim Paulista' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  neighborhood?: string;
 
   @ApiPropertyOptional({ example: 1 })
   @IsOptional()

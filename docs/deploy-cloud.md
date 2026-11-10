@@ -12,8 +12,10 @@ A API roda em qualquer serviço que execute um container Docker e ofereça Postg
 | `DATABASE_SYNC` | não | `true` | Cria/atualiza as tabelas sozinho (MVP) |
 | `PORT` | não | `3000` | A plataforma normalmente define |
 | `JWT_SECRET` | sim, na cloud | valor interno | Segredo dos tokens de login |
-| `SEED_DEMO` | não | `true` | Cria síndico, empresa, condomínios e sensores de demonstração |
-| `DEMO_PASSWORD` | não | `Coillect@2025` | Senha das contas de demonstração |
+| `SEED_DEMO` | não | `true` | Cria síndico, empresa, condomínios, barris e sensores de demonstração |
+| `DEMO_PASSWORD` | não | `Coillect@2025` | Senha das contas de demonstração (e dos cadastros do admin sem senha) |
+| `SENSOR_ONLINE_MINUTES` | não | `30` | Minutos sem leitura até o sensor aparecer como inativo (`online: false`) |
+| `APP_TIMEZONE` | não | `America/Sao_Paulo` | Fuso usado nas datas das notificações |
 
 Verificação: `GET /api/health` deve responder `"database": "up"`.
 
@@ -28,7 +30,7 @@ O arquivo `render.yaml` na raiz cria a API e um PostgreSQL.
 5. Rode o roteiro de verificação na sua máquina (Node 18+):
    `node backend/scripts/smoke-flow.mjs https://<seu-servico>.onrender.com/api --reset`
 6. Nos três apps, no campo **Servidor da API**, use `https://<seu-servico>.onrender.com/api/`.
-7. No firmware/simulador do sensor, use `https://<seu-servico>.onrender.com/api/sensor/readings`.
+7. No firmware/simulador do sensor, use `https://<seu-servico>.onrender.com/api/sensor-alert`.
 
 Limites do plano gratuito do Render:
 
