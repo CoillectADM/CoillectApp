@@ -6,6 +6,8 @@ empresa e notifica o síndico. Fila e comprovantes no Azure Storage (Queue + Blo
 
 - **Comece por [`LEIA-PRIMEIRO-CODEX.txt`](LEIA-PRIMEIRO-CODEX.txt)**: visão geral, rodar
   localmente, testes, roteiro da apresentação e deploys.
+- **Documentação completa em [`documentação/`](documentação/README.md)**: arquitetura, todas as rotas,
+  sensor, apps, Azure, bibliotecas, testes, fluxos com diagramas e o histórico de mudanças.
 - API: [`backend/`](backend/README.md) · Sensor: [`sensor-esp32/`](sensor-esp32/README.md) ·
   Rotas dos apps: [`docs/api-apps.md`](docs/api-apps.md) · Azure (A02): [`docs/azure-a02.md`](docs/azure-a02.md)
 - Apps: [app-mobile-sindico](https://github.com/CoillectADM/app-mobile-sindico) ·

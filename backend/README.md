@@ -30,14 +30,19 @@ antes do `docker compose up` (ver [azure-a02.md](../docs/azure-a02.md)).
 - API: `http://localhost:3000/api` · Swagger: `http://localhost:3000/api/docs`
 - No emulador Android, o endereço do computador é `http://10.0.2.2:3000/api/`.
 
-Sem Docker (banco do compose na porta 5482):
+Sem Docker para a API (só o banco do compose, na porta 5482). A API **não lê o arquivo `.env`**:
+passe as variáveis no terminal.
 
 ```bash
+docker compose up -d db              # na pasta CoillectApp
 cd backend
-cp .env.example .env      # ajuste se precisar
 npm ci
-npm run start:dev
+DATABASE_PORT=5482 npm run start:dev # Git Bash, Linux ou macOS
 ```
+
+No PowerShell: `$env:DATABASE_PORT="5482"; npm run start:dev`. As outras variáveis estão em
+[`.env.example`](.env.example); para usar esse arquivo, copie para `.env`, rode `npm run build` e
+depois `node --env-file=.env dist/main.js` (Node 20.6+).
 
 Sem `AZURE_STORAGE_CONNECTION_STRING` a API roda em **modo local**: comprovantes na pasta
 `backend/storage-local/` e fila em memória (as notificações saem na hora).
