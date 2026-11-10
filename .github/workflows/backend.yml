@@ -72,6 +72,16 @@ jobs:
           JWT_SECRET: ci-only-secret
         run: npm run test:e2e:mvp 2>&1 | tee "$RUNNER_TEMP/4-e2e.log"
 
+      - name: Resumo dos testes
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/3-unit.log "$RUNNER_TEMP"/4-e2e.log; do
+            [ -f "$f" ] || continue
+            grep -E "^(Test Suites|Tests):" "$f" | while read -r line; do
+              echo "::notice title=$(basename "$f")::$line"
+            done
+          done
+
       - name: Resumo dos erros
         if: failure()
         run: python3 .github/scripts/report_errors.py "$RUNNER_TEMP"/*.log
@@ -111,7 +121,9 @@ jobs:
           exit 1
 
       - name: Roteiro completo via HTTP (scripts/smoke-flow.mjs)
-        run: node backend/scripts/smoke-flow.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/3-smoke.log"
+        run: |
+          node backend/scripts/smoke-flow.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/3-smoke.log"
+          echo "::notice title=smoke-flow::$(grep -c '✓' "$RUNNER_TEMP/3-smoke.log") verificações OK contra o container (PORT=8080, DATABASE_URL)"
 
       - name: Resumo dos erros
         if: failure()

@@ -23,7 +23,6 @@ export class HealthController {
         status: database === 'up' ? 'ok' : 'degraded',
         database,
         uptimeSeconds: Math.round(process.uptime()),
-        version: process.env.npm_package_version || '2.0.0',
       })
       .setError(false)
       .setStatusCode(200)
