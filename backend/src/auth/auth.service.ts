@@ -35,6 +35,8 @@ export class AuthService {
     const payload = { sub: user.id, email: user.email, role: 'user' };
     return {
       access_token: this.jwtService.sign(payload),
+      role: 'user',
+      profile: { id: user.id, name: user.name, email: user.email },
     };
   }
 
@@ -61,6 +63,8 @@ export class AuthService {
     const payload = { sub: company.id, email: company.email, role: 'company' };
     return {
       access_token: this.jwtService.sign(payload),
+      role: 'company',
+      profile: { id: company.id, name: company.name, email: company.email },
     };
   }
 }

@@ -1,0 +1,132 @@
+name: Backend (API Coillect)
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - "docker-compose.yaml"
+      - "render.yaml"
+      - ".github/workflows/backend.yml"
+      - ".github/scripts/**"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docker-compose.yaml"
+      - "render.yaml"
+      - ".github/workflows/backend.yml"
+      - ".github/scripts/**"
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  api:
+    name: Build, testes e fluxo e2e (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coillect_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d coillect_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: backend
+        run: npm ci 2>&1 | tee "$RUNNER_TEMP/1-npm-ci.log"
+
+      - name: Build
+        working-directory: backend
+        run: npm run build 2>&1 | tee "$RUNNER_TEMP/2-build.log"
+
+      - name: Testes unitários do MVP
+        working-directory: backend
+        run: npm run test:mvp 2>&1 | tee "$RUNNER_TEMP/3-unit.log"
+
+      - name: Fluxo e2e (sensor → empresa → síndico → admin)
+        working-directory: backend
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: "5432"
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: coillect_test
+          JWT_SECRET: ci-only-secret
+        run: npm run test:e2e:mvp 2>&1 | tee "$RUNNER_TEMP/4-e2e.log"
+
+      - name: Resumo dos testes
+        if: always()
+        run: |
+          for f in "$RUNNER_TEMP"/3-unit.log "$RUNNER_TEMP"/4-e2e.log; do
+            [ -f "$f" ] || continue
+            grep -E "^(Test Suites|Tests):" "$f" | while read -r line; do
+              echo "::notice title=$(basename "$f")::$line"
+            done
+          done
+
+      - name: Resumo dos erros
+        if: failure()
+        run: python3 .github/scripts/report_errors.py "$RUNNER_TEMP"/*.log
+
+  docker:
+    name: Imagem Docker como na cloud (PORT + DATABASE_URL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validar docker-compose.yaml
+        run: docker compose config --quiet 2>&1 | tee "$RUNNER_TEMP/1-compose.log"
+
+      - name: Build da imagem
+        run: docker build -t coillect-api ./backend 2>&1 | tee "$RUNNER_TEMP/2-docker-build.log"
+
+      - name: Subir PostgreSQL + API (porta 8080, DATABASE_URL)
+        run: |
+          docker network create coillect
+          docker run -d --name coillect-db --network coillect \
+            -e POSTGRES_USER=coillect -e POSTGRES_PASSWORD=coillect -e POSTGRES_DB=coillect \
+            postgres:17-alpine
+          docker run -d --name coillect-api --network coillect -p 8080:8080 \
+            -e PORT=8080 \
+            -e DATABASE_URL=postgres://coillect:coillect@coillect-db:5432/coillect \
+            -e JWT_SECRET=ci-only-secret \
+            coillect-api
+
+      - name: Aguardar /api/health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health; then echo; exit 0; fi
+            sleep 3
+          done
+          echo "API não respondeu em 3 minutos" >&2
+          exit 1
+
+      - name: Roteiro completo via HTTP (scripts/smoke-flow.mjs)
+        run: |
+          node backend/scripts/smoke-flow.mjs http://localhost:8080/api --reset 2>&1 | tee "$RUNNER_TEMP/3-smoke.log"
+          echo "::notice title=smoke-flow::$(grep -c '✓' "$RUNNER_TEMP/3-smoke.log") verificações OK contra o container (PORT=8080, DATABASE_URL)"
+
+      - name: Resumo dos erros
+        if: failure()
+        run: |
+          docker logs coillect-api > "$RUNNER_TEMP/9-api-container.log" 2>&1 || true
+          python3 .github/scripts/report_errors.py "$RUNNER_TEMP"/*.log

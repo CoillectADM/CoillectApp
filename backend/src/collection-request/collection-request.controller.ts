@@ -3,22 +3,34 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseIntPipe,
   Post,
   Req,
   UseGuards,
-  Param,
 } from '@nestjs/common';
 import { CollectionRequestService } from './collection-request.service';
 import { CreateCollectionRequestDto } from './dto/create-collection-request.dto';
+import { AcceptCollectionRequestDto } from './dto/accept-collection-request.dto';
 import { JwtUserAuthGuard } from 'src/auth/guards/jwt-user.guard';
 import { JwtCompanyAuthGuard } from 'src/auth/guards/jwt-company.guard';
 import { APIResponse } from 'src/utils/response/response';
+import { toRequestView } from './collection-request.view';
 import {
   ApiBearerAuth,
   ApiTags,
   ApiOperation,
   ApiParam,
 } from '@nestjs/swagger';
+
+function ok(data: unknown, message: string, statusCode = 200): APIResponse {
+  return new APIResponse()
+    .setData(data)
+    .setError(false)
+    .setStatusCode(statusCode)
+    .setMessage(message)
+    .build();
+}
 
 @ApiTags('collection-request')
 @ApiBearerAuth()
@@ -28,196 +40,167 @@ export class CollectionRequestController {
     private readonly collectionRequestService: CollectionRequestService,
   ) {}
 
-  @UseGuards(JwtUserAuthGuard)
-  @Post()
-  @ApiOperation({ summary: 'Cria uma solicitação de coleta para o usuário logado' })
-  async create(
-    @Req() req: any,
-    @Body() dto: CreateCollectionRequestDto,
-  ): Promise<APIResponse> {
-    const userId = req.user.sub;
-
-    const request = await this.collectionRequestService.createForUser(
-      userId,
-      dto,
-    );
-
-    return new APIResponse()
-      .setData(request)
-      .setError(false)
-      .setStatusCode(201)
-      .setMessage('Solicitação de coleta criada com sucesso')
-      .build();
-  }
+  // ---------------------------------------------------------------
+  // Síndico (app-mobile-sindico) — token de /auth/login
+  // ---------------------------------------------------------------
 
   @UseGuards(JwtUserAuthGuard)
   @Get('my-active')
-  @ApiOperation({ summary: 'Retorna a solicitação ativa do usuário logado' })
+  @ApiOperation({
+    summary:
+      'Síndico: cópia da solicitação em aberto do seu condomínio (mesma solicitação enviada à empresa)',
+  })
   async getMyActive(@Req() req: any): Promise<APIResponse> {
-    const userId = req.user.sub;
-
     const request = await this.collectionRequestService.getActiveForUser(
-      userId,
+      req.user.sub,
     );
-
-    return new APIResponse()
-      .setData(request)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage(
-        request ? 'Solicitação ativa encontrada' : 'Nenhuma solicitação ativa',
-      )
-      .build();
+    return ok(
+      request ? toRequestView(request) : null,
+      request ? 'Solicitação ativa encontrada' : 'Nenhuma solicitação ativa',
+    );
   }
 
   @UseGuards(JwtUserAuthGuard)
   @Get('my-history')
-  @ApiOperation({ summary: 'Lista histórico de solicitações encerradas do usuário logado' })
+  @ApiOperation({
+    summary: 'Síndico: histórico de solicitações encerradas',
+  })
   async getMyHistory(@Req() req: any): Promise<APIResponse> {
-    const userId = req.user.sub;
-    const list = await this.collectionRequestService.getUserHistory(userId);
+    const list = await this.collectionRequestService.getUserHistory(
+      req.user.sub,
+    );
+    return ok(list.map(toRequestView), 'Histórico de solicitações do usuário');
+  }
 
-    return new APIResponse()
-      .setData(list)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Histórico de solicitações do usuário')
-      .build();
+  @UseGuards(JwtUserAuthGuard)
+  @Post()
+  @ApiOperation({
+    summary:
+      '[Fluxo antigo] Usuário cria uma solicitação manual escolhendo a empresa',
+  })
+  async create(
+    @Req() req: any,
+    @Body() dto: CreateCollectionRequestDto,
+  ): Promise<APIResponse> {
+    const request = await this.collectionRequestService.createForUser(
+      req.user.sub,
+      dto,
+    );
+    return ok(
+      toRequestView(request),
+      'Solicitação de coleta criada com sucesso',
+      201,
+    );
   }
 
   @UseGuards(JwtUserAuthGuard)
   @Post(':id/cancel')
-  @ApiOperation({ summary: 'Cancela a solicitação do usuário logado' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID da solicitação de coleta',
-    example: 42,
-  })
+  @ApiOperation({ summary: '[Fluxo antigo] Usuário cancela a solicitação' })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
   async cancelForUser(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<APIResponse> {
-    const userId = req.user.sub;
     const request = await this.collectionRequestService.cancelForUser(
-      Number(id),
-      userId,
+      id,
+      req.user.sub,
     );
-
-    return new APIResponse()
-      .setData(request)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Solicitação cancelada com sucesso')
-      .build();
+    return ok(toRequestView(request), 'Solicitação cancelada com sucesso');
   }
 
   @UseGuards(JwtUserAuthGuard)
   @Post(':id/complete')
-  @ApiOperation({ summary: 'Usuário confirma que a coleta foi realizada' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID da solicitação de coleta a ser concluída',
-    example: 42,
+  @ApiOperation({
+    summary: '[Fluxo antigo] Usuário confirma que a coleta foi realizada',
   })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
   async completeForUser(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<APIResponse> {
-    const userId = req.user.sub;
     const request = await this.collectionRequestService.completeForUser(
-      Number(id),
-      userId,
+      id,
+      req.user.sub,
     );
-
-    return new APIResponse()
-      .setData(request)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Coleta concluída com sucesso')
-      .build();
+    return ok(toRequestView(request), 'Coleta concluída com sucesso');
   }
+
+  // ---------------------------------------------------------------
+  // Empresa coletora (app-mobile-empresa) — token de /auth/company/login
+  // ---------------------------------------------------------------
 
   @UseGuards(JwtCompanyAuthGuard)
   @Get('company/active')
-  @ApiOperation({ summary: 'Lista solicitações pendentes da empresa logada' })
+  @ApiOperation({
+    summary:
+      'Empresa: solicitações em aberto (PENDING = aguardando início, SCHEDULED = em andamento)',
+  })
   async getCompanyActive(@Req() req: any): Promise<APIResponse> {
-    const companyId = req.user.sub;
-    const list =
-      await this.collectionRequestService.getCompanyActiveRequests(companyId);
-
-    return new APIResponse()
-      .setData(list)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Solicitações ativas da empresa')
-      .build();
+    const list = await this.collectionRequestService.getCompanyActiveRequests(
+      req.user.sub,
+    );
+    return ok(list.map(toRequestView), 'Solicitações ativas da empresa');
   }
 
   @UseGuards(JwtCompanyAuthGuard)
   @Get('company/history')
-  @ApiOperation({ summary: 'Lista histórico de solicitações encerradas da empresa logada' })
+  @ApiOperation({ summary: 'Empresa: histórico de solicitações encerradas' })
   async getCompanyHistory(@Req() req: any): Promise<APIResponse> {
-    const companyId = req.user.sub;
-    const list =
-      await this.collectionRequestService.getCompanyHistory(companyId);
-
-    return new APIResponse()
-      .setData(list)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Histórico de solicitações da empresa')
-      .build();
+    const list = await this.collectionRequestService.getCompanyHistory(
+      req.user.sub,
+    );
+    return ok(list.map(toRequestView), 'Histórico de solicitações da empresa');
   }
 
   @UseGuards(JwtCompanyAuthGuard)
   @Post(':id/accept')
-  @ApiOperation({ summary: 'Empresa aceita uma solicitação de coleta' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID da solicitação de coleta a ser aceita',
-    example: 42,
+  @ApiOperation({
+    summary: 'Empresa: "Iniciar etapa de coleta" (PENDING → SCHEDULED)',
   })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
   async accept(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AcceptCollectionRequestDto,
   ): Promise<APIResponse> {
-    const companyId = req.user.sub;
     const request = await this.collectionRequestService.acceptRequest(
-      Number(id),
-      companyId,
+      id,
+      req.user.sub,
+      dto?.scheduledDate ? new Date(dto.scheduledDate) : undefined,
     );
+    return ok(toRequestView(request), 'Etapa de coleta iniciada');
+  }
 
-    return new APIResponse()
-      .setData(request)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Solicitação aceita e agendada')
-      .build();
+  @UseGuards(JwtCompanyAuthGuard)
+  @Post(':id/company-complete')
+  @ApiOperation({
+    summary:
+      'Empresa: conclui a coleta (→ COMPLETED). O barril volta a 0% e o síndico é notificado',
+  })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
+  async completeByCompany(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<APIResponse> {
+    const request = await this.collectionRequestService.completeByCompany(
+      id,
+      req.user.sub,
+    );
+    return ok(toRequestView(request), 'Coleta concluída');
   }
 
   @UseGuards(JwtCompanyAuthGuard)
   @Post(':id/refuse')
-  @ApiOperation({ summary: 'Empresa recusa uma solicitação de coleta' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID da solicitação de coleta a ser recusada',
-    example: 42,
-  })
+  @ApiOperation({ summary: 'Empresa: recusa a solicitação (→ REFUSED)' })
+  @ApiParam({ name: 'id', description: 'ID da solicitação', example: 42 })
   async refuse(
     @Req() req: any,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<APIResponse> {
-    const companyId = req.user.sub;
     const request = await this.collectionRequestService.refuseRequest(
-      Number(id),
-      companyId,
+      id,
+      req.user.sub,
     );
-
-    return new APIResponse()
-      .setData(request)
-      .setError(false)
-      .setStatusCode(200)
-      .setMessage('Solicitação recusada')
-      .build();
+    return ok(toRequestView(request), 'Solicitação recusada');
   }
 }

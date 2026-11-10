@@ -17,7 +17,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:mvp": "jest src/config src/events src/sensor src/collection-request/collection-trigger.rule.spec.ts src/collection-request/collection-request.view.spec.ts",
+    "test:e2e:mvp": "jest --config ./test/jest-e2e.json --runInBand --forceExit test/mvp-flow.e2e-spec.ts",
+    "smoke": "node scripts/smoke-flow.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
@@ -81,6 +84,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
   }
 }
